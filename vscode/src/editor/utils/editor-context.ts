@@ -144,7 +144,11 @@ export async function getFileContextFiles(options: FileContextItemsOptions): Pro
     const LARGE_SCORE = 100000
     const adjustedResults = [...results].map(result => {
         // Boost results for documents that are open in the editor.
-        if (openDocuments.has(result.obj.uri.path)) {
+        // But don't boost VS Code config files like settings.json
+        const isVSCodeConfigFile = result.obj.uri.path.includes('/.vscode/')
+        const isOpenDoc = openDocuments.has(result.obj.uri.path)
+
+        if (isOpenDoc && !isVSCodeConfigFile) {
             return {
                 ...result,
                 score: result.score + LARGE_SCORE,
@@ -160,6 +164,15 @@ export async function getFileContextFiles(options: FileContextItemsOptions): Pro
                 }
             }
         }
+
+        // Apply penalty for VS Code config files that might interfere with fuzzy search
+        if (result.obj.uri.path.includes('/.vscode/')) {
+            return {
+                ...result,
+                score: result.score - LARGE_SCORE,
+            }
+        }
+
         return result
     })
     // fuzzysort can return results in different order for the same query if
@@ -338,6 +351,8 @@ async function createContextFileFromUri(
     const repoNames = await firstResultFromOperation(repoNameResolver.getRepoNamesContainingUri(uri))
     const repoName: string | undefined = repoNames[0]
 
+    const isIgnored = await contextFiltersProvider.isUriIgnored(uri)
+
     return [
         type === 'file'
             ? {
@@ -346,7 +361,7 @@ async function createContextFileFromUri(
                   range,
                   source,
                   repoName,
-                  isIgnored: Boolean(await contextFiltersProvider.isUriIgnored(uri)),
+                  isIgnored: Boolean(isIgnored),
               }
             : {
                   type,
@@ -512,7 +527,10 @@ async function resolveFileOrSymbolContextItem(
         const repository = contextItem.remoteRepositoryName
         const path = contextItem.uri.path.slice(repository.length + 1, contextItem.uri.path.length)
         const ranges = contextItem.range
-            ? { startLine: contextItem.range.start.line, endLine: contextItem.range.end.line + 1 }
+            ? {
+                  startLine: contextItem.range.start.line,
+                  endLine: contextItem.range.end.line + 1,
+              }
             : undefined
 
         const { auth } = await currentResolvedConfig()

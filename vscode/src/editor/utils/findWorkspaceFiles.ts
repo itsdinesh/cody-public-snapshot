@@ -7,11 +7,24 @@ import { getExcludePattern } from '../../cody-ignore/context-filter'
  * File...` command.
  */
 export async function findWorkspaceFiles(): Promise<ReadonlyArray<vscode.Uri>> {
-    const excludePatterns = await Promise.all(
-        vscode.workspace.workspaceFolders?.flatMap(workspaceFolder => {
-            return getExcludePattern(workspaceFolder)
-        }) ?? []
+    const excludePatternStrings = await Promise.all(
+        vscode.workspace.workspaceFolders?.flatMap(workspaceFolder =>
+            getExcludePattern(workspaceFolder)
+        ) ?? []
     )
 
-    return vscode.workspace.findFiles('**/*', `{${excludePatterns.join(',')}}`)
+    // Each excludePatternString is already formatted as {pattern1,pattern2}
+    // We need to extract the patterns and combine them into a single exclude string
+    const allExcludePatterns: string[] = []
+    for (const patternString of excludePatternStrings) {
+        if (patternString?.startsWith('{') && patternString.endsWith('}')) {
+            const content = patternString.slice(1, -1)
+            if (content) {
+                allExcludePatterns.push(...content.split(',').filter(p => p.trim()))
+            }
+        }
+    }
+
+    const excludePattern = allExcludePatterns.length > 0 ? `{${allExcludePatterns.join(',')}}` : ''
+    return vscode.workspace.findFiles('**/*', excludePattern)
 }

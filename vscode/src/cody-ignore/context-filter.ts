@@ -50,9 +50,9 @@ function setupFileWatcher(workspaceFolder: vscode.WorkspaceFolder): void {
 
     watcher.onDidChange(updateCache)
     watcher.onDidCreate(updateCache)
-    watcher.onDidDelete(() => {
+    watcher.onDidDelete(async () => {
         const cacheKey = getCacheKey(workspaceFolder)
-        excludeCache.delete(cacheKey)
+        excludeCache.set(cacheKey, {})
     })
 
     fileWatchers.set(watcherKey, watcher)
@@ -70,14 +70,17 @@ export async function getExcludePattern(
         ...sgignoreExclude,
     }
     const excludePatterns = Object.keys(mergedExclude).filter(key => mergedExclude[key] === true)
-    return `{${excludePatterns.join(',')}}`
+    const result = `{${excludePatterns.join(',')}}`
+    return result
 }
 
 export async function readIgnoreFile(uri: vscode.Uri): Promise<IgnoreRecord> {
     const ignore: IgnoreRecord = {}
     try {
         const data = await vscode.workspace.fs.readFile(uri)
-        for (let line of Buffer.from(data).toString('utf-8').split('\n')) {
+        const content = Buffer.from(data).toString('utf-8')
+        
+        for (let line of content.split('\n')) {
             if (line.startsWith('!')) {
                 continue
             }
@@ -92,7 +95,7 @@ export async function readIgnoreFile(uri: vscode.Uri): Promise<IgnoreRecord> {
             // Replace , with . that contain commas to avoid typos for entries such as
             // *,something
             if (line.includes(',')) {
-                line = line.replace(',', '.')
+                line = line.replace(/,/g, '.')
             }
 
             if (line.endsWith('/')) {
@@ -103,7 +106,10 @@ export async function readIgnoreFile(uri: vscode.Uri): Promise<IgnoreRecord> {
             }
             ignore[line] = true
         }
-    } catch {}
+    } catch (error) {
+        // Silently handle file not found or read errors
+        // This is expected behavior when .sourcegraph/ignore doesn't exist
+    }
     return ignore
 }
 
