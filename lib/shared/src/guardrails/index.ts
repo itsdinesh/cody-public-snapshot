@@ -1,3 +1,24 @@
+/**
+ * Detects if the given code contains base64 image data that should be excluded
+ * from guardrails processing to prevent timeouts.
+ */
+function containsBase64ImageData(code: string): boolean {
+    // Check for data URL patterns with image MIME types
+    const dataUrlPattern = /data:image\/[a-zA-Z+]+;base64,/
+    if (dataUrlPattern.test(code)) {
+        return true
+    }
+
+    // Check for large base64-like strings that could be image data
+    // Base64 strings are typically very long and contain only alphanumeric chars, +, /, and =
+    const base64Pattern = /^[A-Za-z0-9+/]{100,}={0,2}$/m
+    if (base64Pattern.test(code)) {
+        return true
+    }
+
+    return false
+}
+
 // Controls whether and how guardrails are enforced, and requests attribution
 // for code snippets.
 export interface Guardrails {
@@ -158,6 +179,12 @@ class GuardrailsPost implements Guardrails, GuardrailsResultSink {
     }
 
     needsAttribution({ code, language }: { code: string; language?: string }): boolean {
+        // Skip attribution for content that contains base64 image data
+        // This prevents timeouts when processing responses with embedded images
+        if (containsBase64ImageData(code)) {
+            return false
+        }
+
         // TODO: should this be *non-empty* lines, or include empty lines?
         return code.split('\n').length >= 10 && !isShellLanguage(language)
     }

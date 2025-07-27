@@ -75,14 +75,15 @@ class GuardrailsCache {
         language: string | undefined,
         updateStatus: (status: GuardrailsResult) => void
     ): GuardrailsResult {
-        if (!isCodeComplete) {
-            return {
-                status: GuardrailsCheckStatus.GeneratingCode,
-            }
-        }
         if (!guardrails.needsAttribution({ code, language })) {
             return {
                 status: GuardrailsCheckStatus.Skipped,
+            }
+        }
+
+        if (!isCodeComplete) {
+            return {
+                status: GuardrailsCheckStatus.GeneratingCode,
             }
         }
         const cache = this.cache.get(guardrails)
@@ -180,13 +181,16 @@ export const GuardrailsApplicator: React.FC<GuardrailsApplicatorProps> = ({
     // guardrailsResult, and may asynchronously update guardrailsResult as
     // checks complete.
     useEffect(() => {
+        // Check if attribution is needed first, even if code is not complete
+        // This prevents showing "Generating code" for content that will be skipped anyway
+        if (!guardrails.needsAttribution({ code: plainCode, language })) {
+            setGuardrailsResult({
+                status: GuardrailsCheckStatus.Skipped,
+            })
+            return
+        }
+
         if (isCodeComplete) {
-            if (!guardrails.needsAttribution({ code: plainCode, language })) {
-                setGuardrailsResult({
-                    status: GuardrailsCheckStatus.Skipped,
-                })
-                return
-            }
             setGuardrailsResult(
                 guardrailsCache.getStatus(
                     guardrails,
