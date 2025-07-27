@@ -343,7 +343,10 @@ export {
     promise,
     type ReadonlyDeep,
 } from './utils'
-export type { CurrentUserCodySubscription } from './sourcegraph-api/graphql/client'
+export type {
+    CurrentUserCodySubscription,
+    DirectoryContentsResponse,
+} from './sourcegraph-api/graphql/client'
 export * from './auth/types'
 export * from './auth/tokens'
 export * from './auth/referral'

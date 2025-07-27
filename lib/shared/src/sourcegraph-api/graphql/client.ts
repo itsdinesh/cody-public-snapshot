@@ -379,7 +379,7 @@ interface FileContentsResponse {
     } | null
 }
 
-interface DirectoryContentsResponse {
+export interface DirectoryContentsResponse {
     repository: {
         commit: {
             tree: {
@@ -388,7 +388,8 @@ interface DirectoryContentsResponse {
                     path: string
                     byteSize?: number
                     url: string
-                    content?: string
+                    rawURL: string
+                    binary?: boolean
                     isDirectory?: boolean
                 }>
             } | null
@@ -1088,6 +1089,39 @@ export class SourcegraphGraphQLAPIClient {
                 revision,
             }
         ).then(response => extractDataOrError(response, data => data))
+    }
+
+    public async fetchContentFromRawURL(rawURL: string, signal?: AbortSignal): Promise<string | Error> {
+        try {
+            const config = await firstValueFrom(this.config!)
+            signal?.throwIfAborted()
+
+            const headers = new Headers()
+            addTraceparent(headers)
+            addCodyClientIdentificationHeaders(headers)
+
+            const url = new URL(rawURL, config.auth.serverEndpoint)
+            await addAuthHeaders(config.auth, headers, url)
+
+            const { abortController } = dependentAbortControllerWithTimeout(signal)
+            const response = await fetch(url, {
+                method: 'GET',
+                headers,
+                signal: abortController.signal,
+            })
+
+            if (!response.ok) {
+                return new Error(
+                    `Failed to fetch raw content: ${response.status} ${response.statusText}`
+                )
+            }
+
+            return await response.text()
+        } catch (error: any) {
+            return isAbortError(error)
+                ? error
+                : new Error(`Failed to fetch raw content: ${error.message}`)
+        }
     }
 
     public async getRepoId(repoName: string): Promise<string | null | Error> {

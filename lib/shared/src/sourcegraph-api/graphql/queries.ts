@@ -774,7 +774,8 @@ query GetDirectoryContents($repoName: String!, $revision: String!, $path: String
             path
             byteSize
             url
-            content
+            rawURL
+            binary
           }
           ... on GitTree {
             name

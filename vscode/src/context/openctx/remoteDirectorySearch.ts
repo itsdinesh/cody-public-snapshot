@@ -142,11 +142,8 @@ export function createRemoteDirectoryProvider(customTitle?: string): OpenCtxProv
             if (!mention?.data?.repoID || !mention?.data?.directoryPath || !message) {
                 return []
             }
-
             const revision = mention.data.branch ?? mention.data.rev
             return await getDirectoryItem(
-                message,
-                mention.data.repoID as string,
                 mention.data.repoName as string,
                 mention.data.directoryPath as string,
                 revision as string
@@ -218,70 +215,45 @@ async function getDirectoryBranchMentions(repoName: string, branchQuery?: string
 }
 
 async function getDirectoryItem(
-    _userMessage: string, // ignore content - we want all files in directory
-    repoID: string,
     repoName: string,
     directoryPath: string,
     revision?: string
 ): Promise<Item[]> {
-    const filePatterns = [`^${escapeRegExp(directoryPath)}.*`]
-    // Use directory basename as search query since contextSearch requires non-empty query
-    const searchQuery = directoryPath.split('/').pop() || '.'
-    const dataOrError = await graphqlClient.contextSearch({
-        repoIDs: [repoID],
-        query: searchQuery,
-        filePatterns,
-        revision,
-    })
-
+    const dataOrError = await graphqlClient.getDirectoryContents(repoName, directoryPath, revision)
     if (isError(dataOrError) || dataOrError === null) {
         return []
     }
 
-    // If contextSearch returns no results, try fallback to getDirectoryContents
-    if (dataOrError.length === 0) {
-        const fallbackData = await graphqlClient.getDirectoryContents(repoName, directoryPath, revision)
-        if (!isError(fallbackData) && fallbackData !== null) {
-            const entries = fallbackData.repository?.commit?.tree?.entries || []
-            const {
-                auth: { serverEndpoint },
-            } = await currentResolvedConfig()
-
-            return entries
-                .filter(entry => entry.content && !entry.isDirectory) // Only include files with content
-                .map(entry => ({
-                    url: revision
-                        ? `${serverEndpoint.replace(/\/$/, '')}/${repoName}@${revision}/-/blob/${
-                              entry.path
-                          }`
-                        : `${serverEndpoint.replace(/\/$/, '')}${entry.url}`,
-                    title: entry.path,
-                    ai: {
-                        content: entry.content,
-                    },
-                })) as Item[]
-        }
-        return []
-    }
-
+    const entries = dataOrError.repository?.commit?.tree?.entries || []
     const {
         auth: { serverEndpoint },
     } = await currentResolvedConfig()
 
-    return dataOrError.map(
-        node =>
-            ({
+    const items: Item[] = []
+    for (const entry of entries) {
+        if (entry.isDirectory || entry.binary) {
+            continue
+        }
+
+        let content = ''
+        const rawContent = await graphqlClient.fetchContentFromRawURL(entry.rawURL)
+        if (!isError(rawContent)) {
+            content = rawContent
+        }
+
+        if (content) {
+            items.push({
                 url: revision
-                    ? `${serverEndpoint.replace(/\/$/, '')}/${node.repoName}@${revision}/-/blob/${
-                          node.path
-                      }`
-                    : node.uri.toString(),
-                title: node.path,
+                    ? `${serverEndpoint.replace(/\/$/, '')}/${repoName}@${revision}/-/blob/${entry.path}`
+                    : `${serverEndpoint.replace(/\/$/, '')}${entry.url}`,
+                title: entry.path,
                 ai: {
-                    content: node.content,
+                    content,
                 },
-            }) as Item
-    )
+            })
+        }
+    }
+    return items
 }
 
 export default RemoteDirectoryProvider
