@@ -14,7 +14,7 @@ import { type AgentClient, createAgentClient } from '../agent/agent.client'
  * host sends during chat-switching. Some events should always be handled by the client
  * regardless of which active panel they came from.
  */
-const GLOBAL_MESSAGE_TYPES: Array<ExtensionMessage['type']> = ['rpc/response']
+const GLOBAL_MESSAGE_TYPES: Array<ExtensionMessage['type']> = ['rpc/response', 'clientConfig']
 
 const GLOBAL_AGENT_SHUTDOWN_TIMER = 10 * 60 * 1000 // 10 minutes
 
