@@ -445,14 +445,6 @@ function getItemsHeading(
                         ? 'Directory - Select or search for a directory*'
                         : 'Directory - Select a repository*'}
                 </div>
-                <div
-                    className={clsx(
-                        'tw-text-xs tw-rounded tw-px-2 tw-text-foreground',
-                        styles.experimental
-                    )}
-                >
-                    Experimental
-                </div>
             </div>
         )
     }
