@@ -7,6 +7,15 @@ type IgnoreRecord = Record<string, boolean>
 const excludeCache = new Map<string, IgnoreRecord>()
 const fileWatchers = new Map<string, vscode.FileSystemWatcher>()
 
+// Export for testing
+export function clearCache(): void {
+    excludeCache.clear()
+    for (const watcher of fileWatchers.values()) {
+        watcher.dispose()
+    }
+    fileWatchers.clear()
+}
+
 function getCacheKey(workspaceFolder: vscode.WorkspaceFolder | null): string {
     return workspaceFolder?.uri.toString() ?? 'no-workspace'
 }
@@ -70,8 +79,19 @@ export async function getExcludePattern(
         ...sgignoreExclude,
     }
     const excludePatterns = Object.keys(mergedExclude).filter(key => mergedExclude[key] === true)
-    const result = `{${excludePatterns.join(',')}}`
-    return result
+
+    // Return empty string if no patterns, otherwise format as glob pattern
+    if (excludePatterns.length === 0) {
+        return ''
+    }
+
+    // For single pattern, no need for braces
+    if (excludePatterns.length === 1) {
+        return excludePatterns[0]
+    }
+
+    // For multiple patterns, wrap in braces
+    return `{${excludePatterns.join(',')}}`
 }
 
 export async function readIgnoreFile(uri: vscode.Uri): Promise<IgnoreRecord> {
@@ -79,7 +99,7 @@ export async function readIgnoreFile(uri: vscode.Uri): Promise<IgnoreRecord> {
     try {
         const data = await vscode.workspace.fs.readFile(uri)
         const content = Buffer.from(data).toString('utf-8')
-        
+
         for (let line of content.split('\n')) {
             if (line.startsWith('!')) {
                 continue

@@ -239,9 +239,13 @@ export class ContextFiltersProvider implements vscode.Disposable {
 
         // Temporary fix for E2E tests: Don't ignore common test files
         const path = uri.path.toLowerCase()
-        if (path.includes('main.java') || path.includes('index.html') || 
-            path.includes('var.go') || path.includes('visualize.go') || 
-            path.includes('buzz.ts')) {
+        if (
+            path.includes('main.java') ||
+            path.includes('index.html') ||
+            path.includes('var.go') ||
+            path.includes('visualize.go') ||
+            path.includes('buzz.ts')
+        ) {
             return false
         }
 
@@ -332,7 +336,7 @@ export class ContextFiltersProvider implements vscode.Disposable {
         if (!patternString || typeof patternString !== 'string') {
             return []
         }
-        
+
         // Remove the surrounding braces and split by comma
         if (!patternString.startsWith('{') || !patternString.endsWith('}')) {
             return []

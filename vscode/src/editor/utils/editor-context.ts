@@ -169,7 +169,7 @@ export async function getFileContextFiles(options: FileContextItemsOptions): Pro
         if (result.obj.uri.path.includes('/.vscode/')) {
             return {
                 ...result,
-                score: result.score - LARGE_SCORE,
+                score: result.score - LARGE_SCORE * 10, // Increase penalty significantly to prevent .vscode files from showing up
             }
         }
 

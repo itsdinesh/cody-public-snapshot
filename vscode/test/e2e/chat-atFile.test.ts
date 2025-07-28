@@ -233,7 +233,8 @@ test.extend<ExpectedV2Events>({
     // Send a message with an @-mention.
     await firstChatInput.fill('Explain ')
     await firstChatInput.pressSequentially('@mj', { delay: 350 })
-    await chatPanelFrame.getByRole('option', { name: 'Main.java' }).click()
+    await expect(chatPanelFrame.getByRole('option', { name: 'Main.java' })).toBeVisible()
+    await firstChatInput.press('Tab')
     await expect(firstChatInput).toHaveText('Explain Main.java ')
     await firstChatInput.press('Enter')
     const contextCell = getContextCell(chatPanelFrame)
@@ -248,7 +249,9 @@ test.extend<ExpectedV2Events>({
     await expect(firstChatInput).toHaveText('Explain Main.java ')
     await focusChatInputAtEnd(firstChatInput)
     await firstChatInput.pressSequentially('and @index.ht')
-    await chatPanelFrame.getByRole('option', { name: 'index.html' }).click()
+    await focusChatInputAtEnd(firstChatInput)
+    await expect(chatPanelFrame.getByRole('option', { name: 'index.html' })).toBeVisible()
+    await firstChatInput.press('Tab')
     await expect(firstChatInput).toHaveText('Explain Main.java and index.html')
     await firstChatInput.press('Enter')
     await expect(firstChatInput).toHaveText('Explain Main.java and index.html')
@@ -273,7 +276,7 @@ test.extend<ExpectedV2Events>({
     const [chatPanelFrame, chatInput] = await createEmptyChatPanel(page)
 
     // Type a file with range.
-    await chatInput.fill('@buzz.ts:2-4')
+    await chatInput.pressSequentially('@buzz.ts:2-4')
     await expect(chatPanelFrame.getByRole('option', { name: 'buzz.ts Lines 2-4' })).toBeVisible()
     await chatPanelFrame.getByRole('option', { name: 'buzz.ts Lines 2-4' }).click()
     await expect(chatInput).toHaveText('buzz.ts:2-4 ')
@@ -373,6 +376,8 @@ test.extend<ExpectedV2Events>({
 
     await openFileInEditorTab(page, 'buzz.ts')
     await selectLineRangeInEditorTab(page, 2, 5)
+    // Small delay to ensure selection is registered
+    await page.waitForTimeout(100)
     const [, lastChatInput] = await createEmptyChatPanel(page)
     await expect(chatInputMentions(lastChatInput)).toHaveText(['buzz.ts', 'buzz.ts:2-5'], {
         timeout: 3_000,
@@ -380,6 +385,8 @@ test.extend<ExpectedV2Events>({
 
     await lastChatInput.press('x')
     await selectLineRangeInEditorTab(page, 7, 10)
+    // Small delay to ensure selection is registered before adding to chat
+    await page.waitForTimeout(100)
     await executeCommandInPalette(page, 'Cody: Add Selection to Cody Chat')
     await expect(chatInputMentions(lastChatInput)).toHaveText(['buzz.ts', 'buzz.ts:2-5', 'buzz.ts:7-10'])
 })

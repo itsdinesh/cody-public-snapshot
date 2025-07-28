@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock vscode.workspace.fs
 vi.mock('vscode', () => ({
@@ -6,14 +6,23 @@ vi.mock('vscode', () => ({
         fs: {
             readFile: vi.fn(),
         },
+        createFileSystemWatcher: vi.fn(() => ({
+            onDidChange: vi.fn(),
+            onDidCreate: vi.fn(),
+            onDidDelete: vi.fn(),
+            dispose: vi.fn(),
+        })),
+        getWorkspaceFolder: vi.fn(),
     },
     Uri: {
         file: vi.fn(),
+        joinPath: vi.fn(),
     },
+    RelativePattern: vi.fn(),
 }))
 
 import * as vscode from 'vscode'
-import { readIgnoreFile } from './context-filter'
+import { clearCache, getExcludePattern, readIgnoreFile } from './context-filter'
 
 describe('readIgnoreFile', () => {
     it('parses basic gitignore patterns', async () => {
@@ -104,5 +113,92 @@ describe('readIgnoreFile', () => {
             '**/dist': true,
             '**/*.log': true,
         })
+    })
+})
+
+describe('getExcludePattern', () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        // Clear cache for proper test isolation
+        clearCache()
+    })
+
+    it('returns empty string when no exclude patterns exist', async () => {
+        const mockWorkspace = { uri: { toString: () => 'test-workspace' } } as vscode.WorkspaceFolder
+
+        vi.mocked(vscode.Uri.joinPath).mockReturnValue({} as vscode.Uri)
+        vi.mocked(vscode.workspace.fs.readFile).mockRejectedValue(new Error('File not found'))
+
+        const result = await getExcludePattern(mockWorkspace)
+
+        expect(result).toBe('')
+    })
+
+    it('returns formatted glob pattern with single exclude pattern', async () => {
+        const mockWorkspace = { uri: { toString: () => 'test-workspace' } } as vscode.WorkspaceFolder
+        const mockData = new Uint8Array(Buffer.from('node_modules'))
+
+        vi.mocked(vscode.Uri.joinPath).mockReturnValue({} as vscode.Uri)
+        vi.mocked(vscode.workspace.fs.readFile).mockResolvedValue(mockData)
+
+        const result = await getExcludePattern(mockWorkspace)
+
+        expect(result).toBe('**/node_modules')
+    })
+
+    it('returns formatted glob pattern with multiple exclude patterns', async () => {
+        const mockWorkspace = { uri: { toString: () => 'test-workspace' } } as vscode.WorkspaceFolder
+        const mockData = new Uint8Array(Buffer.from('node_modules\n*.log\ndist/'))
+
+        vi.mocked(vscode.Uri.joinPath).mockReturnValue({} as vscode.Uri)
+        vi.mocked(vscode.workspace.fs.readFile).mockResolvedValue(mockData)
+
+        const result = await getExcludePattern(mockWorkspace)
+
+        expect(result).toBe('{**/node_modules,**/*.log,**/dist}')
+    })
+
+    it('handles null workspace folder', async () => {
+        const result = await getExcludePattern(null)
+
+        expect(result).toBe('')
+    })
+
+    it('handles patterns with special characters that could break glob', async () => {
+        const mockWorkspace = { uri: { toString: () => 'test-workspace' } } as vscode.WorkspaceFolder
+        const mockData = new Uint8Array(Buffer.from('*.{js,ts}\n**/*.log'))
+
+        vi.mocked(vscode.Uri.joinPath).mockReturnValue({} as vscode.Uri)
+        vi.mocked(vscode.workspace.fs.readFile).mockResolvedValue(mockData)
+
+        const result = await getExcludePattern(mockWorkspace)
+
+        // Should not create nested braces that break glob parsing
+        expect(result).not.toMatch(/\{\{.*\}\}/)
+        expect(result).toBe('{**/*.{js.ts},**/*.log}')
+    })
+
+    it('handles empty ignore file', async () => {
+        const mockWorkspace = { uri: { toString: () => 'test-workspace' } } as vscode.WorkspaceFolder
+        const mockData = new Uint8Array(Buffer.from(''))
+
+        vi.mocked(vscode.Uri.joinPath).mockReturnValue({} as vscode.Uri)
+        vi.mocked(vscode.workspace.fs.readFile).mockResolvedValue(mockData)
+
+        const result = await getExcludePattern(mockWorkspace)
+
+        expect(result).toBe('')
+    })
+
+    it('handles ignore file with only comments and empty lines', async () => {
+        const mockWorkspace = { uri: { toString: () => 'test-workspace' } } as vscode.WorkspaceFolder
+        const mockData = new Uint8Array(Buffer.from('# Comment only\n\n  \n# Another comment'))
+
+        vi.mocked(vscode.Uri.joinPath).mockReturnValue({} as vscode.Uri)
+        vi.mocked(vscode.workspace.fs.readFile).mockResolvedValue(mockData)
+
+        const result = await getExcludePattern(mockWorkspace)
+
+        expect(result).toBe('')
     })
 })

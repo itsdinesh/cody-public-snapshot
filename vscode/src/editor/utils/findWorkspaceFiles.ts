@@ -25,6 +25,26 @@ export async function findWorkspaceFiles(): Promise<ReadonlyArray<vscode.Uri>> {
         }
     }
 
+    // Add VS Code's built-in exclude patterns
+    const config = vscode.workspace.getConfiguration()
+    const filesExclude = config.get<Record<string, boolean>>('files.exclude') || {}
+    const searchExclude = config.get<Record<string, boolean>>('search.exclude') || {}
+
+    // Add patterns from files.exclude and search.exclude that are set to true
+    for (const [pattern, enabled] of Object.entries(filesExclude)) {
+        if (enabled) {
+            allExcludePatterns.push(pattern)
+        }
+    }
+    for (const [pattern, enabled] of Object.entries(searchExclude)) {
+        if (enabled) {
+            allExcludePatterns.push(pattern)
+        }
+    }
+
+    // Always exclude .vscode directories to prevent config files from appearing in @-mentions
+    allExcludePatterns.push('**/.vscode/**')
+
     const excludePattern = allExcludePatterns.length > 0 ? `{${allExcludePatterns.join(',')}}` : ''
     return vscode.workspace.findFiles('**/*', excludePattern)
 }
