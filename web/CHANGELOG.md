@@ -1,3 +1,6 @@
+## 0.34.0
+- Fixes problem when client configuration updates are ignored after we create new chat
+
 ## 0.33.0
 - A lot of changes since 0.23.1 which haven't been documented well
 (please test new versions manually on the instance locally before publishing).
