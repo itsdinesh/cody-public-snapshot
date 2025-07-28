@@ -512,6 +512,148 @@ describe('RemoteDirectoryProvider mentions', () => {
             },
         })
     })
+
+    test('should handle branch filtering without @ prefix', async () => {
+        // Mock the resolved config
+        mockResolvedConfig({
+            auth: {
+                serverEndpoint: auth.serverEndpoint,
+            },
+        })
+
+        // Mock getRepositoryMentions to return branch data
+        const { getRepositoryMentions } = await import('./common/get-repository-mentions')
+        vi.mocked(getRepositoryMentions).mockResolvedValue([
+            {
+                title: 'test-repo',
+                providerUri: REMOTE_DIRECTORY_PROVIDER_URI,
+                uri: `${auth.serverEndpoint}/test-repo`,
+                description: ' ',
+                data: {
+                    repoId: 'repo-id',
+                    repoName: 'test-repo',
+                    defaultBranch: 'main',
+                    branches: [
+                        'main',
+                        'feature/search-improvement',
+                        'feature/search-ui',
+                        'fix/search-bug',
+                        'develop',
+                    ],
+                    isIgnored: false,
+                },
+            },
+        ])
+
+        const provider = createRemoteDirectoryProvider()
+        // Test filtering branches without @ prefix - should match branches first
+        const mentions = await provider.mentions?.({ query: 'test-repo:feat' }, {})
+
+        expect(mentions).toHaveLength(2) // 2 matching branches
+
+        // Check that getRepositoryMentions was called
+        expect(getRepositoryMentions).toHaveBeenCalledWith('test-repo', REMOTE_DIRECTORY_PROVIDER_URI)
+
+        // Check that we get the matching branches (filtered by 'feat')
+        expect(mentions?.[0]).toEqual({
+            uri: `${auth.serverEndpoint}/test-repo@feature/search-improvement`,
+            title: '@feature/search-improvement',
+            description: ' ',
+            data: {
+                repoName: 'test-repo',
+                repoID: 'repo-id',
+                branch: 'feature/search-improvement',
+            },
+        })
+
+        expect(mentions?.[1]).toEqual({
+            uri: `${auth.serverEndpoint}/test-repo@feature/search-ui`,
+            title: '@feature/search-ui',
+            description: ' ',
+            data: {
+                repoName: 'test-repo',
+                repoID: 'repo-id',
+                branch: 'feature/search-ui',
+            },
+        })
+    })
+
+    test('should fallback to directory search when no branches match', async () => {
+        // Mock the resolved config
+        mockResolvedConfig({
+            auth: {
+                serverEndpoint: auth.serverEndpoint,
+            },
+        })
+
+        // Mock getRepositoryMentions to return branch data (no branches matching 'src')
+        const { getRepositoryMentions } = await import('./common/get-repository-mentions')
+        vi.mocked(getRepositoryMentions).mockResolvedValue([
+            {
+                title: 'test-repo',
+                providerUri: REMOTE_DIRECTORY_PROVIDER_URI,
+                uri: `${auth.serverEndpoint}/test-repo`,
+                description: ' ',
+                data: {
+                    repoId: 'repo-id',
+                    repoName: 'test-repo',
+                    defaultBranch: 'main',
+                    branches: ['main', 'develop', 'feature-branch'],
+                    isIgnored: false,
+                },
+            },
+        ])
+
+        // Mock directory search
+        const mockSearchFileMatches = {
+            search: {
+                results: {
+                    results: [
+                        {
+                            __typename: 'FileMatch',
+                            repository: {
+                                id: 'repo-id',
+                                name: 'test-repo',
+                            },
+                            file: {
+                                url: '/test-repo/-/tree/src',
+                                path: 'src',
+                                commit: {
+                                    oid: 'abc123',
+                                },
+                            },
+                        },
+                    ],
+                },
+            },
+        }
+
+        vi.spyOn(graphqlClient, 'searchFileMatches').mockResolvedValue(mockSearchFileMatches)
+
+        const provider = createRemoteDirectoryProvider()
+        // Test with 'src' - no branches match, should fallback to directory search
+        const mentions = await provider.mentions?.({ query: 'test-repo:src' }, {})
+
+        expect(mentions).toHaveLength(1) // 1 directory result
+
+        // Should have called directory search
+        expect(graphqlClient.searchFileMatches).toHaveBeenCalledWith(
+            'repo:^test-repo$ file:^src.*\\/.* select:file.directory count:10'
+        )
+
+        expect(mentions?.[0]).toEqual({
+            uri: `${auth.serverEndpoint}/test-repo/-/tree/src`,
+            title: 'src',
+            description: ' ',
+            data: {
+                repoName: 'test-repo',
+                repoID: 'repo-id',
+                rev: 'abc123',
+                directoryPath: 'src',
+                branch: undefined,
+            },
+        })
+    })
 })
 
 describe('RemoteDirectoryProvider directory contents', () => {
@@ -536,20 +678,21 @@ describe('RemoteDirectoryProvider directory contents', () => {
                                 name: 'file1.ts',
                                 path: 'src/file1.ts',
                                 url: '/repo/-/blob/src/file1.ts',
-                                content: 'const foo = "bar";',
+                                rawURL: '/raw/repo/-/blob/src/file1.ts',
                                 byteSize: 18,
                             },
                             {
                                 name: 'file2.js',
                                 path: 'src/file2.js',
                                 url: '/repo/-/blob/src/file2.js',
-                                content: 'console.log("hello");',
+                                rawURL: '/raw/repo/-/blob/src/file2.js',
                                 byteSize: 21,
                             },
                             {
                                 name: 'subdir',
                                 path: 'src/subdir',
                                 url: '/repo/-/tree/src/subdir',
+                                rawURL: '/raw/repo/-/tree/src/subdir',
                                 isDirectory: true,
                             },
                         ],
@@ -559,6 +702,18 @@ describe('RemoteDirectoryProvider directory contents', () => {
         }
 
         vi.spyOn(graphqlClient, 'getDirectoryContents').mockResolvedValue(mockDirectoryContents)
+
+        // Mock fetchContentFromRawURL to return content for each file
+        vi.spyOn(graphqlClient, 'fetchContentFromRawURL')
+            .mockImplementation(async (rawURL: string) => {
+                if (rawURL.includes('file1.ts')) {
+                    return 'const foo = "bar";'
+                }
+                if (rawURL.includes('file2.js')) {
+                    return 'console.log("hello");'
+                }
+                return new Error('File not found')
+            })
 
         const provider = createRemoteDirectoryProvider()
         const items = await provider.items?.(

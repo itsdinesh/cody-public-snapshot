@@ -47,95 +47,92 @@ export function createRemoteDirectoryProvider(customTitle?: string): OpenCtxProv
         },
 
         async mentions({ query }) {
-            const [repoName, directoryPath] = query?.split(':') || []
+            if (!query?.trim()) {
+                return await getRepositoryMentions('', REMOTE_DIRECTORY_PROVIDER_URI)
+            }
 
-            if (!query?.includes(':') || !repoName.trim()) {
-                // Check if the query contains branch specification (@branch) but NOT colon
-                // This handles formats like "repo@branch" but not "repo:@branch"
-                if (query?.includes('@') && !query.includes(':')) {
-                    // Handle both @branch and @branch/directory formats
-                    // TODO: This logic currently treats any '/' after '@' as a directory separator,
-                    // but branch names can contain '/' (e.g., 'feature/fix-123').
-                    // We need better heuristics to distinguish between branch names with slashes
-                    // and actual directory paths.
-                    const trimmedQuery = query?.trim() ?? ''
-                    const atIndex = trimmedQuery.indexOf('@')
-                    const slashIndex = atIndex >= 0 ? trimmedQuery.indexOf('/', atIndex) : -1
+            const trimmedQuery = query.trim()
 
+            // Step 1: Repository selection (no colon means we're still selecting repos)
+            if (!trimmedQuery.includes(':')) {
+                // Handle repo@branch format (direct branch specification)
+                if (trimmedQuery.includes('@')) {
+                    const slashIndex = trimmedQuery.indexOf('/', trimmedQuery.indexOf('@'))
                     if (slashIndex > 0) {
                         // Format: repo@branch/directory
                         const repoWithBranch = trimmedQuery.substring(0, slashIndex)
                         const directoryPathPart = trimmedQuery.substring(slashIndex + 1)
                         return await getDirectoryMentions(repoWithBranch, directoryPathPart)
                     }
-
-                    // Format: repo@branch (root directory search)
-                    const [repoNamePart] = extractRepoAndBranch(trimmedQuery)
-                    if (repoNamePart.trim()) {
-                        return await getDirectoryMentions(trimmedQuery, '')
-                    }
+                    // Format: repo@branch (show root directories)
+                    return await getDirectoryMentions(trimmedQuery, '')
                 }
-                return await getRepositoryMentions(query?.trim() ?? '', REMOTE_DIRECTORY_PROVIDER_URI)
+                // No @ symbol, still selecting repositories
+                return await getRepositoryMentions(trimmedQuery, REMOTE_DIRECTORY_PROVIDER_URI)
             }
 
-            // Handle case where user types repo:@branch (colon followed by @branch)
-            if (directoryPath?.startsWith('@')) {
-                let branchQuery = directoryPath.substring(1) // Remove the @
+            // Step 2: Parse repo:path format
+            const [repoName, pathPart] = trimmedQuery.split(':', 2)
+            if (!repoName.trim()) {
+                return await getRepositoryMentions('', REMOTE_DIRECTORY_PROVIDER_URI)
+            }
 
-                // Handle trailing colon from mention menu (repo:@branch: -> @branch:)
+            // Step 3: Branch selection/filtering (path starts with @)
+            if (pathPart?.startsWith('@')) {
+                const branchQuery = pathPart.substring(1) // Remove @
+
+                // Handle trailing colon from mention menu selection (repo:@branch:)
                 if (branchQuery.endsWith(':')) {
-                    branchQuery = branchQuery.slice(0, -1) // Remove trailing colon
-                    // This is a branch selection from mention menu, show directory listing
+                    const cleanBranchName = branchQuery.slice(0, -1)
+                    return await getDirectoryMentions(`${repoName}@${cleanBranchName}`, '')
+                }
+
+                // Handle branch/directory format (repo:@branch/directory)
+                const slashIndex = branchQuery.indexOf('/')
+                if (slashIndex > 0) {
+                    const branchName = branchQuery.substring(0, slashIndex)
+                    const directoryPath = branchQuery.substring(slashIndex + 1)
+                    return await getDirectoryMentions(`${repoName}@${branchName}`, directoryPath)
+                }
+
+                // Check if this looks like a complete branch name vs a search query
+                // Complete branch names typically have hyphens, slashes, underscores, or are longer
+                const looksLikeCompleteBranch = branchQuery.length > 6 ||
+                    branchQuery.includes('-') ||
+                    branchQuery.includes('/') ||
+                    branchQuery.includes('_')
+
+                if (looksLikeCompleteBranch) {
+                    // Treat as exact branch name - show directories for this branch
                     return await getDirectoryMentions(`${repoName}@${branchQuery}`, '')
                 }
 
-                // Check if this looks like a complete branch name (no spaces, reasonable length)
-                // vs a search query (partial, contains spaces, etc.)
-                const slashIndex = directoryPath.indexOf('/')
-                if (slashIndex > 0) {
-                    // Format: repo:@branch/directory - treat as exact branch
-                    const branchPart = directoryPath.substring(0, slashIndex)
-                    const directoryPathPart = directoryPath.substring(slashIndex + 1)
-                    return await getDirectoryMentions(`${repoName}${branchPart}`, directoryPathPart)
-                }
-
-                // Use fuzzy search for empty queries (just @) or short queries that look like partial searches
-                // Longer queries or queries with common branch patterns are treated as exact branch names
-                const looksLikeSearch =
-                    branchQuery.length === 0 ||
-                    (branchQuery.length > 0 &&
-                        branchQuery.length <= 6 &&
-                        !branchQuery.includes('-') &&
-                        !branchQuery.includes('/') &&
-                        !branchQuery.includes('_'))
-                if (looksLikeSearch) {
-                    return await getDirectoryBranchMentions(repoName, branchQuery)
-                }
-
-                // Otherwise treat as exact branch name
-                const repoWithBranch = `${repoName}@${branchQuery}`
-                return await getDirectoryMentions(repoWithBranch, '')
-            }
-
-            // Check if we should show branch suggestions for this repository
-            if (!directoryPath.trim()) {
-                // Check if repoName contains a branch (repo@branch format from mention menu)
-                if (repoName.includes('@')) {
-                    // This is "repo@branch:" - show directory listing for this branch
-                    return await getDirectoryMentions(repoName, '')
-                }
-                // User typed "repo:" - show branch suggestions
-                return await getDirectoryBranchMentions(repoName)
-            }
-
-            // Check if user is searching for branches (starts with @)
-            if (directoryPath.startsWith('@')) {
-                // User typed "repo:@query" - search for branches matching query
-                const branchQuery = directoryPath.substring(1) // Remove the @
+                // Short query or empty - show branch filtering/search
                 return await getDirectoryBranchMentions(repoName, branchQuery)
             }
 
-            return await getDirectoryMentions(repoName, directoryPath.trim())
+            // Step 4: Directory selection/filtering
+            if (!pathPart?.trim()) {
+                // Empty path after colon - check if repo has branch specified
+                if (repoName.includes('@')) {
+                    // repo@branch: - show directories for this branch
+                    return await getDirectoryMentions(repoName, '')
+                }
+                // repo: - show branch selection
+                return await getDirectoryBranchMentions(repoName)
+            }
+
+            // Step 5: Handle repo:query - could be branch filtering or directory search
+            // First try branch filtering (this allows filtering without @ prefix)
+            const branchMentions = await getDirectoryBranchMentions(repoName, pathPart.trim())
+
+            // If we found matching branches, return them
+            if (branchMentions.length > 0) {
+                return branchMentions
+            }
+
+            // No matching branches found, treat as directory search
+            return await getDirectoryMentions(repoName, pathPart.trim())
         },
 
         async items({ mention, message }) {
@@ -205,11 +202,6 @@ async function getDirectoryBranchMentions(repoName: string, branchQuery?: string
         providerUri: REMOTE_DIRECTORY_PROVIDER_URI,
         branchQuery,
     })
-
-    // If no branch mentions found, fallback to directory search
-    if (branchMentions.length === 0) {
-        return await getDirectoryMentions(repoName, '')
-    }
 
     return branchMentions
 }

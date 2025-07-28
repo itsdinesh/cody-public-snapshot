@@ -416,6 +416,19 @@ function getEmptyLabel(
     return parentItem.emptyLabel ?? 'No results'
 }
 
+function getRemoteDirectoryHeading(queryText: string): string {
+    if (!queryText.includes(':')) {
+        return 'Directory - Select a repository*'
+    }
+
+    // If path includes @, we're in directory selection/filtering mode
+    if (queryText.includes('@')) {
+        return 'Directory - Select or search for a directory*'
+    }
+
+    return 'Directory - Select or search for a branch*'
+}
+
 function getItemsHeading(
     parentItem: ContextMentionProviderMetadata | null,
     mentionQuery: MentionQuery
@@ -441,9 +454,7 @@ function getItemsHeading(
         return (
             <div className="tw-flex tw-flex-gap-2 tw-items-center tw-justify-between">
                 <div>
-                    {mentionQuery.text.includes(':')
-                        ? 'Directory - Select or search for a directory*'
-                        : 'Directory - Select a repository*'}
+                    {getRemoteDirectoryHeading(mentionQuery.text)}
                 </div>
             </div>
         )
