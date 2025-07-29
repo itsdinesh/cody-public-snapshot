@@ -513,6 +513,107 @@ describe('RemoteDirectoryProvider mentions', () => {
         })
     })
 
+    test('should search for branches beyond first 10 when no matches found in initial branches', async () => {
+        // Mock the resolved config
+        mockResolvedConfig({
+            auth: {
+                serverEndpoint: auth.serverEndpoint,
+            },
+        })
+
+        // Mock getRepositoryMentions to return only first 10 branches (none matching our query)
+        const { getRepositoryMentions } = await import('./common/get-repository-mentions')
+        vi.mocked(getRepositoryMentions).mockResolvedValue([
+            {
+                title: 'test-repo',
+                providerUri: REMOTE_DIRECTORY_PROVIDER_URI,
+                uri: `${auth.serverEndpoint}/test-repo`,
+                description: ' ',
+                data: {
+                    repoId: 'repo-id',
+                    repoName: 'test-repo',
+                    defaultBranch: 'main',
+                    branches: [
+                        'main',
+                        'develop',
+                        'feature/ui',
+                        'feature/api',
+                        'fix/bug1',
+                        'fix/bug2',
+                        'release/v1.0',
+                        'release/v1.1',
+                        'hotfix/critical',
+                        'docs/update',
+                    ],
+                    isIgnored: false,
+                },
+            },
+        ])
+
+        // Mock the GraphQL client to return more branches including our target
+        vi.spyOn(graphqlClient, 'getRepositoryBranches').mockResolvedValue({
+            repository: {
+                id: 'repo-id',
+                name: 'test-repo',
+                defaultBranch: { abbrevName: 'main' },
+                branches: {
+                    nodes: [
+                        { abbrevName: 'main' },
+                        { abbrevName: 'develop' },
+                        { abbrevName: 'feature/ui' },
+                        { abbrevName: 'feature/api' },
+                        { abbrevName: 'fix/bug1' },
+                        { abbrevName: 'fix/bug2' },
+                        { abbrevName: 'release/v1.0' },
+                        { abbrevName: 'release/v1.1' },
+                        { abbrevName: 'hotfix/critical' },
+                        { abbrevName: 'docs/update' },
+                        // Additional branches beyond the first 10
+                        { abbrevName: 'apply-fog-order' },
+                        { abbrevName: 'apply-fog-fix' },
+                        { abbrevName: 'feature/other-logic' },
+                    ],
+                    totalCount: 13,
+                },
+            },
+        })
+
+        const provider = createRemoteDirectoryProvider()
+        const mentions = await provider.mentions?.({ query: 'test-repo:@apply-fog' }, {})
+
+        // Should find the branches that match "apply-fog" from the extended search
+        expect(mentions).toHaveLength(2)
+
+        // Check that getRepositoryMentions was called first
+        expect(getRepositoryMentions).toHaveBeenCalledWith('test-repo', REMOTE_DIRECTORY_PROVIDER_URI)
+
+        // Check that GraphQL client was called to get more branches
+        expect(graphqlClient.getRepositoryBranches).toHaveBeenCalledWith('test-repo', 10)
+
+        // Check that we get the matching branches from the extended search
+        expect(mentions?.[0]).toEqual({
+            uri: `${auth.serverEndpoint}/test-repo@apply-fog-order`,
+            title: '@apply-fog-order',
+            description: ' ',
+            data: {
+                repoName: 'test-repo',
+                repoID: 'repo-id',
+                branch: 'apply-fog-order',
+            },
+        })
+
+        expect(mentions?.[1]).toEqual({
+            uri: `${auth.serverEndpoint}/test-repo@apply-fog-fix`,
+            title: '@apply-fog-fix',
+            description: ' ',
+            data: {
+                repoName: 'test-repo',
+                repoID: 'repo-id',
+                branch: 'apply-fog-fix',
+            },
+        })
+    })
+
     test('should handle branch filtering without @ prefix', async () => {
         // Mock the resolved config
         mockResolvedConfig({

@@ -62,6 +62,7 @@ import {
     PROMPT_TAGS_QUERY,
     PromptsOrderBy,
     RECORD_TELEMETRY_EVENTS_MUTATION,
+    REPOSITORY_BRANCHES_QUERY,
     REPOSITORY_IDS_QUERY,
     REPOSITORY_ID_QUERY,
     REPOSITORY_LIST_QUERY,
@@ -409,6 +410,22 @@ export interface RepositoryIdsResponse {
     repositories: {
         nodes: { name: string; id: string }[]
     }
+}
+
+export interface RepositoryBranchesResponse {
+    repository: {
+        id: string
+        name: string
+        defaultBranch?: {
+            abbrevName: string
+        } | null
+        branches: {
+            nodes: Array<{
+                abbrevName: string
+            }>
+            totalCount: number
+        }
+    } | null
 }
 
 export interface SearchAttributionResponse {
@@ -1158,6 +1175,23 @@ export class SourcegraphGraphQLAPIClient {
 
         const result = extractDataOrError(response, data => data.repository?.name ?? null)
         return isError(result) ? null : result
+    }
+
+    public async getRepositoryBranches(
+        repoName: string,
+        first = 10,
+        query?: string,
+        signal?: AbortSignal
+    ): Promise<RepositoryBranchesResponse | Error> {
+        return this.fetchSourcegraphAPI<APIResponse<RepositoryBranchesResponse>>(
+            REPOSITORY_BRANCHES_QUERY,
+            {
+                repoName,
+                first,
+                query,
+            },
+            signal
+        ).then(response => extractDataOrError(response, data => data))
     }
 
     /**

@@ -1,5 +1,5 @@
 import type { Mention } from '@openctx/client'
-import { currentResolvedConfig, isDefined } from '@sourcegraph/cody-shared'
+import { currentResolvedConfig, graphqlClient, isDefined, isError } from '@sourcegraph/cody-shared'
 import { getRepositoryMentions } from './get-repository-mentions'
 
 export interface BranchMentionOptions {
@@ -40,6 +40,15 @@ export async function getBranchMentions(options: BranchMentionOptions): Promise<
     if (branchQuery?.trim()) {
         const query = branchQuery.toLowerCase()
         filteredBranches = branches.filter(branch => branch.toLowerCase().includes(query))
+
+        // If we have a search query but found no matches in the first 10 branches,
+        // try searching for more branches using the GraphQL API
+        if (filteredBranches.length === 0 && query.length >= 2) {
+            const searchResult = await searchRepositoryBranches(repoName, branchQuery, repoId, defaultBranch)
+            if (searchResult.length > 0) {
+                return searchResult
+            }
+        }
     }
 
     return createBranchMentionsFromData({
@@ -57,6 +66,46 @@ export interface CreateBranchMentionsOptions {
     defaultBranch?: string
     branches?: string[]
     branchQuery?: string
+}
+
+/**
+ * Searches for branches in a repository using the GraphQL API when client-side filtering
+ * doesn't find matches in the first 10 branches.
+ */
+async function searchRepositoryBranches(
+    repoName: string,
+    branchQuery: string,
+    repoId: string,
+    defaultBranch?: string
+): Promise<Mention[]> {
+    try {
+        const response = await graphqlClient.getRepositoryBranches(repoName, 10, branchQuery)
+
+        if (isError(response) || !response.repository) {
+            return []
+        }
+
+        const { repository } = response
+        const allBranches = repository.branches.nodes.map(node => node.abbrevName)
+        const repositoryDefaultBranch = repository.defaultBranch?.abbrevName || defaultBranch
+
+        // Filter branches client-side with the search query
+        const query = branchQuery.toLowerCase()
+        const filteredBranches = allBranches.filter(branch =>
+            branch.toLowerCase().includes(query)
+        )
+
+        return createBranchMentionsFromData({
+            repoName,
+            repoId,
+            defaultBranch: repositoryDefaultBranch,
+            branches: filteredBranches,
+            branchQuery,
+        })
+    } catch (error) {
+        // If the search fails, return empty array to fall back to client-side filtering
+        return []
+    }
 }
 
 /**

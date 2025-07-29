@@ -223,7 +223,7 @@ async function getDirectoryItem(
 
     const items: Item[] = []
     for (const entry of entries) {
-        if (entry.isDirectory || entry.binary) {
+        if (!entry.rawURL || entry.binary) {
             continue
         }
 

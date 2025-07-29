@@ -165,6 +165,24 @@ export const REPOS_SUGGESTIONS_QUERY = `
     }
 `
 
+export const REPOSITORY_BRANCHES_QUERY = `
+    query RepositoryBranches($repoName: String!, $first: Int!, $query: String) {
+        repository(name: $repoName) {
+            id
+            name
+            defaultBranch {
+                abbrevName
+            }
+            branches(first: $first, query: $query) {
+                nodes {
+                    abbrevName
+                }
+                totalCount
+            }
+        }
+    }
+`
+
 export const FILE_CONTENTS_QUERY = `
 query FileContentsQuery($repoName: String!, $filePath: String!, $rev: String!) {
     repository(name: $repoName){
@@ -769,18 +787,11 @@ query GetDirectoryContents($repoName: String!, $revision: String!, $path: String
     commit(rev: $revision) {
       tree(path: $path) {
         entries(first: 15) {
-          ... on GitBlob {
-            name
+          ...on GitBlob {
             path
-            byteSize
             url
             rawURL
             binary
-          }
-          ... on GitTree {
-            name
-            path
-            isDirectory
           }
         }
       }
