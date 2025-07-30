@@ -17,6 +17,7 @@ vi.mock('./common/get-repository-mentions', () => ({
 mockClientCapabilities(CLIENT_CAPABILITIES_FIXTURE)
 
 const auth = { serverEndpoint: 'https://sourcegraph.com' }
+const SEARCH_FILE_MATCHES = "repo:^test-repo$@feature-branch file:^[^/]+/[^/]+$ -file:^\\. select:file.directory count:1000"
 
 describe('RemoteDirectoryProvider branch parsing', () => {
     describe('extractRepoAndBranch', () => {
@@ -204,7 +205,7 @@ describe('RemoteDirectoryProvider mentions', () => {
 
         // Verify the correct parameters were passed to searchFileMatches
         expect(graphqlClient.searchFileMatches).toHaveBeenCalledWith(
-            'repo:^github\\.com/mrdoob/three\\.js$@e2e file:^manual.*\\/.* select:file.directory count:10'
+            "repo:^github\\.com/mrdoob/three\\.js$@e2e file:^manual.*\\/.* select:file.directory count:1000"
         )
     })
 
@@ -261,7 +262,7 @@ describe('RemoteDirectoryProvider mentions', () => {
 
         // Verify the branch name is used in the search query
         expect(graphqlClient.searchFileMatches).toHaveBeenCalledWith(
-            'repo:^test-repo$@feature-branch file:[^/]+\\/.* select:file.directory count:10'
+            SEARCH_FILE_MATCHES
         )
     })
 
@@ -318,7 +319,7 @@ describe('RemoteDirectoryProvider mentions', () => {
 
         // Verify the correct parameters were passed to searchFileMatches
         expect(graphqlClient.searchFileMatches).toHaveBeenCalledWith(
-            'repo:^test-repo$@feature-branch file:[^/]+\\/.* select:file.directory count:10'
+           SEARCH_FILE_MATCHES 
         )
     })
 
@@ -375,7 +376,7 @@ describe('RemoteDirectoryProvider mentions', () => {
 
         // Verify the correct parameters were passed to searchFileMatches
         expect(graphqlClient.searchFileMatches).toHaveBeenCalledWith(
-            'repo:^test-repo$@dev file:^src.*\\/.* select:file.directory count:10'
+            'repo:^test-repo$@dev file:^src.*\\/.* select:file.directory count:1000'
         )
     })
 
@@ -588,7 +589,7 @@ describe('RemoteDirectoryProvider mentions', () => {
         expect(getRepositoryMentions).toHaveBeenCalledWith('test-repo', REMOTE_DIRECTORY_PROVIDER_URI)
 
         // Check that GraphQL client was called to get more branches
-        expect(graphqlClient.getRepositoryBranches).toHaveBeenCalledWith('test-repo', 10)
+        expect(graphqlClient.getRepositoryBranches).toHaveBeenCalledWith('test-repo', 10, "apply-fog")
 
         // Check that we get the matching branches from the extended search
         expect(mentions?.[0]).toEqual({
@@ -739,7 +740,7 @@ describe('RemoteDirectoryProvider mentions', () => {
 
         // Should have called directory search
         expect(graphqlClient.searchFileMatches).toHaveBeenCalledWith(
-            'repo:^test-repo$ file:^src.*\\/.* select:file.directory count:10'
+            'repo:^test-repo$ file:^src.*\\/.* select:file.directory count:1000'
         )
 
         expect(mentions?.[0]).toEqual({

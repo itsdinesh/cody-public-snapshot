@@ -95,20 +95,14 @@ export function createRemoteDirectoryProvider(customTitle?: string): OpenCtxProv
                     return await getDirectoryMentions(`${repoName}@${branchName}`, directoryPath)
                 }
 
-                // Check if this looks like a complete branch name vs a search query
-                // Complete branch names typically have hyphens, slashes, underscores, or are longer
-                const looksLikeCompleteBranch = branchQuery.length > 6 ||
-                    branchQuery.includes('-') ||
-                    branchQuery.includes('/') ||
-                    branchQuery.includes('_')
+                const branchMentions = await getDirectoryBranchMentions(repoName, branchQuery)
 
-                if (looksLikeCompleteBranch) {
-                    // Treat as exact branch name - show directories for this branch
-                    return await getDirectoryMentions(`${repoName}@${branchQuery}`, '')
+                if (branchMentions.length > 0) {
+                    return branchMentions
                 }
 
-                // Short query or empty - show branch filtering/search
-                return await getDirectoryBranchMentions(repoName, branchQuery)
+                // No branch matches found - treat as exact branch name and show directories
+                return await getDirectoryMentions(`${repoName}@${branchQuery}`, '')
             }
 
             // Step 4: Directory selection/filtering
