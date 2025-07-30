@@ -168,6 +168,6 @@ describe('MentionMenu branch selection', () => {
         const mentionQuery = { text: 'test-repo:', provider: REMOTE_DIRECTORY_PROVIDER_URI }
 
         const result = getBranchHelpText(items!, mentionQuery)
-        expect(result).toBe('* Select or @ search for a specific branch')
+        expect(result).toBe('* Select or search for a specific branch')
     })
 })

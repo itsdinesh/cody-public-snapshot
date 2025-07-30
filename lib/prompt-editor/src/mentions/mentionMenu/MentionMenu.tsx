@@ -310,7 +310,8 @@ export const MentionMenu: FunctionComponent<
                             className={clsx(
                                 COMMAND_ROW_CLASS_NAME,
                                 COMMAND_ROW_TEXT_CLASS_NAME,
-                                'tw-bg-accent'
+                                'tw-bg-accent',
+                                '!tw-h-auto'
                             )}
                         >
                             {getBranchHelpText(data.items, mentionQuery)}
@@ -373,7 +374,7 @@ export function getBranchHelpText(
         if (repoName && !directoryPath) {
             // Check if this is a branch mention (title starts with @)
             if (firstItem.title?.startsWith('@')) {
-                return '* Select or @ search for a specific branch'
+                return '* Select or search for a specific branch'
             }
         }
 
@@ -453,9 +454,7 @@ function getItemsHeading(
     if (parentItem.id === REMOTE_DIRECTORY_PROVIDER_URI) {
         return (
             <div className="tw-flex tw-flex-gap-2 tw-items-center tw-justify-between">
-                <div>
-                    {getRemoteDirectoryHeading(mentionQuery.text)}
-                </div>
+                <div>{getRemoteDirectoryHeading(mentionQuery.text)}</div>
             </div>
         )
     }
