@@ -53,7 +53,6 @@ export function createRemoteDirectoryProvider(customTitle?: string): OpenCtxProv
                 return await getRepositoryMentions('', REMOTE_DIRECTORY_PROVIDER_URI)
             }
 
-
             // Step 2: Show Branch or Directory initial listing
             const [repoName, pathPart] = trimmedQuery.split(':', 2)
             if (!pathPart?.trim()) {

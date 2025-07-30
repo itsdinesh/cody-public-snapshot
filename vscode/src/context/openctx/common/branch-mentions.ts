@@ -44,7 +44,12 @@ export async function getBranchMentions(options: BranchMentionOptions): Promise<
         // If we have a search query but found no matches in the first 10 branches,
         // try searching for more branches using the GraphQL API
         if (filteredBranches.length === 0 && query.length >= 2) {
-            const searchResult = await searchRepositoryBranches(repoName, branchQuery, repoId, defaultBranch)
+            const searchResult = await searchRepositoryBranches(
+                repoName,
+                branchQuery,
+                repoId,
+                defaultBranch
+            )
             if (searchResult.length > 0) {
                 return searchResult
             }
@@ -91,9 +96,7 @@ async function searchRepositoryBranches(
 
         // Filter branches client-side with the search query
         const query = branchQuery.toLowerCase()
-        const filteredBranches = allBranches.filter(branch =>
-            branch.toLowerCase().includes(query)
-        )
+        const filteredBranches = allBranches.filter(branch => branch.toLowerCase().includes(query))
 
         return createBranchMentionsFromData({
             repoName,

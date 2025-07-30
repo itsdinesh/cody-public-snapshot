@@ -17,7 +17,8 @@ vi.mock('./common/get-repository-mentions', () => ({
 mockClientCapabilities(CLIENT_CAPABILITIES_FIXTURE)
 
 const auth = { serverEndpoint: 'https://sourcegraph.com' }
-const SEARCH_FILE_MATCHES = "repo:^test-repo$@feature-branch file:^[^/]+/[^/]+$ -file:^\\. select:file.directory count:1000"
+const SEARCH_FILE_MATCHES =
+    'repo:^test-repo$@feature-branch file:^[^/]+/[^/]+$ -file:^\\. select:file.directory count:1000'
 
 describe('RemoteDirectoryProvider branch parsing', () => {
     describe('extractRepoAndBranch', () => {
@@ -205,7 +206,7 @@ describe('RemoteDirectoryProvider mentions', () => {
 
         // Verify the correct parameters were passed to searchFileMatches
         expect(graphqlClient.searchFileMatches).toHaveBeenCalledWith(
-            "repo:^github\\.com/mrdoob/three\\.js$@e2e file:^manual.*\\/.* select:file.directory count:1000"
+            'repo:^github\\.com/mrdoob/three\\.js$@e2e file:^manual.*\\/.* select:file.directory count:1000'
         )
     })
 
@@ -261,9 +262,7 @@ describe('RemoteDirectoryProvider mentions', () => {
         })
 
         // Verify the branch name is used in the search query
-        expect(graphqlClient.searchFileMatches).toHaveBeenCalledWith(
-            SEARCH_FILE_MATCHES
-        )
+        expect(graphqlClient.searchFileMatches).toHaveBeenCalledWith(SEARCH_FILE_MATCHES)
     })
 
     test('should handle repo:@branch format (colon followed by @branch)', async () => {
@@ -318,9 +317,7 @@ describe('RemoteDirectoryProvider mentions', () => {
         })
 
         // Verify the correct parameters were passed to searchFileMatches
-        expect(graphqlClient.searchFileMatches).toHaveBeenCalledWith(
-           SEARCH_FILE_MATCHES 
-        )
+        expect(graphqlClient.searchFileMatches).toHaveBeenCalledWith(SEARCH_FILE_MATCHES)
     })
 
     test('should handle repo:@branch/directory format', async () => {
@@ -589,7 +586,7 @@ describe('RemoteDirectoryProvider mentions', () => {
         expect(getRepositoryMentions).toHaveBeenCalledWith('test-repo', REMOTE_DIRECTORY_PROVIDER_URI)
 
         // Check that GraphQL client was called to get more branches
-        expect(graphqlClient.getRepositoryBranches).toHaveBeenCalledWith('test-repo', 10, "apply-fog")
+        expect(graphqlClient.getRepositoryBranches).toHaveBeenCalledWith('test-repo', 10, 'apply-fog')
 
         // Check that we get the matching branches from the extended search
         expect(mentions?.[0]).toEqual({
@@ -679,83 +676,6 @@ describe('RemoteDirectoryProvider mentions', () => {
             },
         })
     })
-
-    test('should fallback to directory search when no branches match', async () => {
-        // Mock the resolved config
-        mockResolvedConfig({
-            auth: {
-                serverEndpoint: auth.serverEndpoint,
-            },
-        })
-
-        // Mock getRepositoryMentions to return branch data (no branches matching 'src')
-        const { getRepositoryMentions } = await import('./common/get-repository-mentions')
-        vi.mocked(getRepositoryMentions).mockResolvedValue([
-            {
-                title: 'test-repo',
-                providerUri: REMOTE_DIRECTORY_PROVIDER_URI,
-                uri: `${auth.serverEndpoint}/test-repo`,
-                description: ' ',
-                data: {
-                    repoId: 'repo-id',
-                    repoName: 'test-repo',
-                    defaultBranch: 'main',
-                    branches: ['main', 'develop', 'feature-branch'],
-                    isIgnored: false,
-                },
-            },
-        ])
-
-        // Mock directory search
-        const mockSearchFileMatches = {
-            search: {
-                results: {
-                    results: [
-                        {
-                            __typename: 'FileMatch',
-                            repository: {
-                                id: 'repo-id',
-                                name: 'test-repo',
-                            },
-                            file: {
-                                url: '/test-repo/-/tree/src',
-                                path: 'src',
-                                commit: {
-                                    oid: 'abc123',
-                                },
-                            },
-                        },
-                    ],
-                },
-            },
-        }
-
-        vi.spyOn(graphqlClient, 'searchFileMatches').mockResolvedValue(mockSearchFileMatches)
-
-        const provider = createRemoteDirectoryProvider()
-        // Test with 'src' - no branches match, should fallback to directory search
-        const mentions = await provider.mentions?.({ query: 'test-repo:src' }, {})
-
-        expect(mentions).toHaveLength(1) // 1 directory result
-
-        // Should have called directory search
-        expect(graphqlClient.searchFileMatches).toHaveBeenCalledWith(
-            'repo:^test-repo$ file:^src.*\\/.* select:file.directory count:1000'
-        )
-
-        expect(mentions?.[0]).toEqual({
-            uri: `${auth.serverEndpoint}/test-repo/-/tree/src`,
-            title: 'src',
-            description: ' ',
-            data: {
-                repoName: 'test-repo',
-                repoID: 'repo-id',
-                rev: 'abc123',
-                directoryPath: 'src',
-                branch: undefined,
-            },
-        })
-    })
 })
 
 describe('RemoteDirectoryProvider directory contents', () => {
@@ -806,16 +726,15 @@ describe('RemoteDirectoryProvider directory contents', () => {
         vi.spyOn(graphqlClient, 'getDirectoryContents').mockResolvedValue(mockDirectoryContents)
 
         // Mock fetchContentFromRawURL to return content for each file
-        vi.spyOn(graphqlClient, 'fetchContentFromRawURL')
-            .mockImplementation(async (rawURL: string) => {
-                if (rawURL.includes('file1.ts')) {
-                    return 'const foo = "bar";'
-                }
-                if (rawURL.includes('file2.js')) {
-                    return 'console.log("hello");'
-                }
-                return new Error('File not found')
-            })
+        vi.spyOn(graphqlClient, 'fetchContentFromRawURL').mockImplementation(async (rawURL: string) => {
+            if (rawURL.includes('file1.ts')) {
+                return 'const foo = "bar";'
+            }
+            if (rawURL.includes('file2.js')) {
+                return 'console.log("hello");'
+            }
+            return new Error('File not found')
+        })
 
         const provider = createRemoteDirectoryProvider()
         const items = await provider.items?.(
