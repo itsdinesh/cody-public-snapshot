@@ -185,7 +185,7 @@ describe('RemoteDirectoryProvider mentions', () => {
 
         const provider = createRemoteDirectoryProvider()
         const mentions = await provider.mentions?.(
-            { query: 'github.com/mrdoob/three.js@e2e/manual' },
+            { query: 'github.com/mrdoob/three.js@e2e:manual' },
             {}
         )
 
@@ -301,7 +301,7 @@ describe('RemoteDirectoryProvider mentions', () => {
         vi.spyOn(graphqlClient, 'searchFileMatches').mockResolvedValue(mockSearchFileMatches)
 
         const provider = createRemoteDirectoryProvider()
-        const mentions = await provider.mentions?.({ query: 'test-repo:@feature-branch' }, {})
+        const mentions = await provider.mentions?.({ query: 'test-repo@feature-branch:' }, {})
 
         expect(mentions).toHaveLength(1)
         expect(mentions?.[0]).toEqual({
@@ -358,7 +358,7 @@ describe('RemoteDirectoryProvider mentions', () => {
         vi.spyOn(graphqlClient, 'searchFileMatches').mockResolvedValue(mockSearchFileMatches)
 
         const provider = createRemoteDirectoryProvider()
-        const mentions = await provider.mentions?.({ query: 'test-repo:@dev/src' }, {})
+        const mentions = await provider.mentions?.({ query: 'test-repo@dev:src' }, {})
 
         expect(mentions).toHaveLength(1)
         expect(mentions?.[0]).toEqual({
@@ -472,7 +472,7 @@ describe('RemoteDirectoryProvider mentions', () => {
         ])
 
         const provider = createRemoteDirectoryProvider()
-        const mentions = await provider.mentions?.({ query: 'test-repo:@feat' }, {})
+        const mentions = await provider.mentions?.({ query: 'test-repo:feat' }, {})
 
         expect(mentions).toHaveLength(2) // 2 matching branches
 
@@ -580,7 +580,7 @@ describe('RemoteDirectoryProvider mentions', () => {
         })
 
         const provider = createRemoteDirectoryProvider()
-        const mentions = await provider.mentions?.({ query: 'test-repo:@apply-fog' }, {})
+        const mentions = await provider.mentions?.({ query: 'test-repo:apply-fog' }, {})
 
         // Should find the branches that match "apply-fog" from the extended search
         expect(mentions).toHaveLength(2)
