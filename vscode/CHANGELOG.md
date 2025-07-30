@@ -4,6 +4,25 @@ This is a log of all notable changes to Cody for VS Code.
 
 <!--- {/_ CHANGELOG_START _/} -->
 
+## 1.116.0
+
+### Chore
+
+#### Cody
+
+- update marketplace listing readme [#8214](https://github.com/sourcegraph/cody/pull/8214)
+
+### Reverts
+
+  There were no reverts for this release
+
+### Uncategorized
+
+#### Others
+
+- Update vscode package version [#8197](https://github.com/sourcegraph/cody/pull/8197)
+
+
 ## 1.114.0
 
 ### Fix
