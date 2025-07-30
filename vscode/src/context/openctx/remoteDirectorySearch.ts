@@ -157,7 +157,7 @@ async function getDirectoryMentions(repoName: string, directoryPath?: string): P
     const repoWithBranch = branchPart ? `${repoRe}@${escapeRegExp(branchPart)}` : repoRe
 
     // For root directory search, use a pattern that finds top-level directories
-    const filePattern = directoryPath ? `^${directoryRe}.*\\/.*` : '^[^/]+/[^/]+$'
+    const filePattern = directoryPath ? `^${directoryRe}.*\\/.*` : '^[^/]+/[^/]+$ -file:^\\.'
     const query = `repo:${repoWithBranch} file:${filePattern} select:file.directory count:1000`
 
     const {
@@ -168,6 +168,11 @@ async function getDirectoryMentions(repoName: string, directoryPath?: string): P
     if (isError(dataOrError) || dataOrError === null) {
         return []
     }
+
+    // sort results by file path
+    dataOrError.search.results.results.sort((a, b) => {
+        return a.file.path.localeCompare(b.file.path)
+    })
 
     return dataOrError.search.results.results
         .map(result => {
