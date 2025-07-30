@@ -40,6 +40,10 @@ export function createRemoteFileProvider(customTitle?: string): OpenCtxProvider 
                 const [repoNamePart, branch] = repoName.split('@')
                 return await getFileMentions(repoNamePart, filePath.trim(), branch)
             }
+
+            if (!repoName.includes('@')) {
+                return await getFileBranchMentions(repoName, filePath.trim())
+            }
             return await getFileBranchMentions(repoName)
         },
 
