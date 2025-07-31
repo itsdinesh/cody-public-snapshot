@@ -7,11 +7,9 @@ import {
     CodyAutoSuggestionMode,
     NEVER,
     type PickResolvedConfiguration,
-    type UserProductSubscription,
     combineLatest,
     createDisposables,
     currentUserProductSubscription,
-    isFreeUser,
     promiseFactoryToObservable,
     skipPendingOperation,
 } from '@sourcegraph/cody-shared'
@@ -84,12 +82,8 @@ export function createAutoEditsProvider({
         promiseFactoryToObservable(async () => await currentUserProductSubscription())
     ).pipe(
         skipPendingOperation(),
-        createDisposables(([userProductSubscription]) => {
-            const userEligibilityInfo = isUserEligibleForAutoeditsFeature(
-                autoeditFeatureFlagEnabled,
-                authStatus,
-                userProductSubscription
-            )
+        createDisposables(() => {
+            const userEligibilityInfo = isUserEligibleForAutoeditsFeature(autoeditFeatureFlagEnabled)
             if (!userEligibilityInfo.isUserEligible) {
                 handleAutoeditsNotificationForNonEligibleUser(userEligibilityInfo.nonEligibilityReason)
                 return []
@@ -193,21 +187,11 @@ function isSettingsEditorOpen(): boolean {
 }
 
 export function isUserEligibleForAutoeditsFeature(
-    autoeditsFeatureFlagEnabled: boolean,
-    authStatus: AuthStatus,
-    productSubscription: UserProductSubscription | null
+    autoeditsFeatureFlagEnabled: boolean
 ): AutoeditsUserEligibilityInfo {
     // Always enable auto-edit when testing
     if (process.env.CODY_TESTING === 'true' || process.env.NODE_ENV === 'test') {
         return { isUserEligible: true }
-    }
-
-    // Free users are not eligible for auto-edit
-    if (isFreeUser(authStatus, productSubscription)) {
-        return {
-            isUserEligible: false,
-            nonEligibilityReason: AUTOEDITS_NON_ELIGIBILITY_MESSAGES.PRO_USER_ONLY,
-        }
     }
 
     // Users with autoedit feature flag enabled are eligible for auto-edit
