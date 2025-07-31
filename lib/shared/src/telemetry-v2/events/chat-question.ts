@@ -15,7 +15,7 @@ import {
 
 import type { PromptString } from '../../prompt/prompt-string'
 import { truncatePromptString } from '../../prompt/truncation'
-import { isDotCom, isS2 } from '../../sourcegraph-api/environments'
+import { isS2 } from '../../sourcegraph-api/environments'
 import { CHAT_INPUT_TOKEN_BUDGET } from '../../token/constants'
 import { telemetryRecorder } from '../singleton'
 import { event, fallbackValue, pickDefined } from './internal'
@@ -42,18 +42,11 @@ export const events = [
                     mentions: ContextItem[]
                 } & SharedProperties
             ) => {
-                const recordTranscript = params.authStatus.endpoint && isDotCom(params.authStatus)
-
-                const gitMetadata =
-                    isDotCom(params.authStatus) && params.repoIsPublic && isArray(params.repoMetadata)
-                        ? params.repoMetadata
-                        : undefined
-
                 telemetryRecorder.recordEvent(feature, action, {
                     metadata: {
-                        // Flag indicating this is a transcript event to go through ML data pipeline. Only for DotCom users
+                        // Flag indicating this is a transcript event to go through ML data pipeline. Not for enterprise users
                         // See https://github.com/sourcegraph/sourcegraph/pull/59524
-                        recordsPrivateMetadataTranscript: recordTranscript ? 1 : 0,
+                        recordsPrivateMetadataTranscript: 0,
                         isPublicRepo: params.repoIsPublic ? 1 : 0,
                         // TODO: Remove this field when the transition from commands to prompts is complete
                         isCommand: params.command ? 1 : 0,
@@ -67,13 +60,8 @@ export const events = [
                         requestID: params.requestID,
                         sessionID: params.sessionID,
                         traceId: params.traceId,
-                        // 🚨 SECURITY: chat transcripts are to be included only for DotCom users AND for V2 telemetry
-                        // V2 telemetry exports privateMetadata only for DotCom users
-                        // the condition below is an additional safeguard measure
-                        promptText: recordTranscript
-                            ? truncatePromptString(params.promptText, CHAT_INPUT_TOKEN_BUDGET)
-                            : undefined,
-                        gitMetadata,
+                        promptText: undefined,
+                        gitMetadata: undefined,
                         chatAgent: params.chatAgent,
                     },
                     billingMetadata: {
@@ -103,9 +91,7 @@ export const events = [
                     addMetadata: boolean
                 }
             ) => {
-                const recordTranscript =
-                    params.authStatus.endpoint &&
-                    (isDotCom(params.authStatus) || isS2(params.authStatus))
+                const recordTranscript = params.authStatus.endpoint && isS2(params.authStatus)
 
                 const gitMetadata =
                     recordTranscript && params.repoIsPublic && isArray(params.repoMetadata)
@@ -140,8 +126,8 @@ export const events = [
                         userSpecifiedIntent: params.userSpecifiedIntent,
                         traceId: spans.current.spanContext().traceId,
                         gitMetadata,
-                        // 🚨 SECURITY: Chat transcripts are to be included only for S2 & Dotcom users AND for V2 telemetry.
-                        // V2 telemetry exports privateMetadata only for S2 & Dotcom users. The condition below is an additional safeguard measure.
+                        // 🚨 SECURITY: Chat transcripts are to be included only for S2 users AND for V2 telemetry.
+                        // V2 telemetry exports privateMetadata only for S2 users. The condition below is an additional safeguard measure.
                         // Check `SRC_TELEMETRY_SENSITIVEMETADATA_ADDITIONAL_ALLOWED_EVENT_TYPES` env to learn more.
                         promptText: recordTranscript
                             ? truncatePromptString(params.promptText, CHAT_INPUT_TOKEN_BUDGET)
