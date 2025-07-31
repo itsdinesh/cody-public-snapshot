@@ -100,7 +100,7 @@ export const FileLink: React.FunctionComponent<
             ? IGNORE_WARNING
             : isTooLarge
               ? `${LIMIT_WARNING}${isTooLargeReason ? `: ${isTooLargeReason}` : ''}`
-              : pathWithRange
+              : decodeURIComponent(pathWithRange)
         return {
             path: pathToDisplay,
             range: range ? `${displayLineRange(range)}` : undefined,
