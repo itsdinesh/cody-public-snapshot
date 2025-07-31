@@ -9,7 +9,6 @@ import {
 } from '@sourcegraph/cody-shared'
 import clsx from 'clsx'
 import { type FunctionComponent, useCallback, useEffect, useMemo, useRef } from 'react'
-import type { UserAccountInfo } from '../../../../../../Chat'
 import { ModelSelectField } from '../../../../../../components/modelSelectField/ModelSelectField'
 import { PromptSelectField } from '../../../../../../components/promptSelectField/PromptSelectField'
 import toolbarStyles from '../../../../../../components/shadcn/ui/toolbar.module.css'
@@ -24,7 +23,6 @@ import { SubmitButton, type SubmitButtonState } from './SubmitButton'
  */
 export const Toolbar: FunctionComponent<{
     models: Model[]
-    userInfo: UserAccountInfo
 
     isEditorFocused: boolean
 
@@ -47,7 +45,6 @@ export const Toolbar: FunctionComponent<{
 
     setLastManuallySelectedIntent: (intent: ChatMessage['intent']) => void
 }> = ({
-    userInfo,
     isEditorFocused,
     onSubmitClick,
     submitState,
@@ -82,12 +79,9 @@ export const Toolbar: FunctionComponent<{
      * or is using a BYOK model with vision tag.
      */
     const isImageUploadEnabled = useMemo(() => {
-        const isDotCom = userInfo?.isDotComUser
         const selectedModel = models?.[0]
-        const isBYOK = selectedModel?.tags?.includes(ModelTag.BYOK)
-        const isVision = selectedModel?.tags?.includes(ModelTag.Vision)
-        return (!isDotCom || isBYOK) && isVision
-    }, [userInfo?.isDotComUser, models?.[0]])
+        return selectedModel?.tags?.includes(ModelTag.Vision)
+    }, [models?.[0]])
 
     const modelSelectorRef = useRef<{ open: () => void; close: () => void } | null>(null)
     const promptSelectorRef = useRef<{ open: () => void; close: () => void } | null>(null)
@@ -148,14 +142,11 @@ export const Toolbar: FunctionComponent<{
                 <ModeSelectorField
                     className={className}
                     _intent={intent}
-                    isDotComUser={userInfo?.isDotComUser}
-                    isCodyProUser={userInfo?.isCodyProUser}
                     manuallySelectIntent={setLastManuallySelectedIntent}
                 />
                 {models?.length >= 2 && (
                     <ModelSelectFieldToolbarItem
                         models={models}
-                        userInfo={userInfo}
                         focusEditor={focusEditor}
                         modelSelectorRef={modelSelectorRef}
                         className="tw-mr-1"
@@ -198,13 +189,12 @@ const PromptSelectFieldToolbarItem: FunctionComponent<{
 
 const ModelSelectFieldToolbarItem: FunctionComponent<{
     models: Model[]
-    userInfo: UserAccountInfo
     focusEditor?: () => void
     className?: string
     extensionAPI: WebviewToExtensionAPI
     modelSelectorRef: React.MutableRefObject<{ open: () => void; close: () => void } | null>
     intent?: ChatMessage['intent']
-}> = ({ userInfo, focusEditor, className, models, extensionAPI, modelSelectorRef, intent }) => {
+}> = ({ focusEditor, className, models, extensionAPI, modelSelectorRef, intent }) => {
     const clientConfig = useClientConfig()
     const serverSentModelsEnabled = !!clientConfig?.modelsAPIEnabled
 
@@ -231,12 +221,11 @@ const ModelSelectFieldToolbarItem: FunctionComponent<{
 
     return (
         !!models?.length &&
-        (userInfo.isDotComUser || serverSentModelsEnabled) && (
+        serverSentModelsEnabled && (
             <ModelSelectField
                 models={models}
                 onModelSelect={onModelSelect}
                 serverSentModelsEnabled={serverSentModelsEnabled}
-                userInfo={userInfo}
                 className={className}
                 data-testid="chat-model-selector"
                 modelSelectorRef={modelSelectorRef}

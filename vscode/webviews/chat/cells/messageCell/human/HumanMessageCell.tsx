@@ -7,14 +7,12 @@ import {
 } from '@sourcegraph/cody-shared'
 import type { PromptEditorRefAPI } from '@sourcegraph/prompt-editor'
 import { type FC, memo, useMemo } from 'react'
-import type { UserAccountInfo } from '../../../../Chat'
 import { BaseMessageCell } from '../BaseMessageCell'
 import { HumanMessageEditor } from './editor/HumanMessageEditor'
 
 interface HumanMessageCellProps {
     message: ChatMessage
     models: Model[]
-    userInfo: UserAccountInfo
     chatEnabled: boolean
 
     /** Whether this editor is for the first message (not a followup). */
@@ -77,7 +75,6 @@ const HumanMessageCellContent = memo<HumanMessageCellContent>(props => {
     const {
         models,
         initialEditorState,
-        userInfo,
         chatEnabled = true,
         isFirstMessage,
         isSent,
@@ -101,7 +98,6 @@ const HumanMessageCellContent = memo<HumanMessageCellContent>(props => {
             content={
                 <HumanMessageEditor
                     models={models}
-                    userInfo={userInfo}
                     initialEditorState={initialEditorState}
                     placeholder={
                         isFirstMessage

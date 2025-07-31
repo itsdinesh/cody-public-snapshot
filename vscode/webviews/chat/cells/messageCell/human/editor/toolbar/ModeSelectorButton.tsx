@@ -39,8 +39,6 @@ interface IntentOption {
 }
 
 export const ModeSelectorField: React.FunctionComponent<{
-    isDotComUser: boolean
-    isCodyProUser: boolean
     _intent: ChatMessage['intent']
     className?: string
     manuallySelectIntent: (intent?: ChatMessage['intent']) => void

@@ -15,7 +15,7 @@ import { DeepCodyAgentID } from '@sourcegraph/cody-shared/src/models/client'
 import type { PromptEditorRefAPI } from '@sourcegraph/prompt-editor'
 import isEqual from 'lodash/isEqual'
 import { type FunctionComponent, type RefObject, memo, useMemo } from 'react'
-import type { ApiPostMessage, UserAccountInfo } from '../../../../Chat'
+import type { ApiPostMessage } from '../../../../Chat'
 import {
     ChatMessageContent,
     type CodeBlockActionsProps,
@@ -38,7 +38,6 @@ export const AssistantMessageCell: FunctionComponent<{
     /** Information about the human message that led to this assistant response. */
     humanMessage: PriorHumanMessageInfo | null
 
-    userInfo: UserAccountInfo
     chatEnabled: boolean
     chatCodeHighlightingEnabled: boolean
     isLoading: boolean
@@ -61,7 +60,6 @@ export const AssistantMessageCell: FunctionComponent<{
         message,
         models,
         humanMessage,
-        userInfo,
         chatEnabled,
         chatCodeHighlightingEnabled,
         isLoading,
@@ -98,7 +96,6 @@ export const AssistantMessageCell: FunctionComponent<{
                             ) : (
                                 <ErrorItem
                                     error={message.error}
-                                    userInfo={userInfo}
                                     postMessage={postMessage}
                                     humanMessage={humanMessage}
                                 />

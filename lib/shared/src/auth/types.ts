@@ -76,11 +76,6 @@ export const AUTH_STATUS_FIXTURE_AUTHED_DOTCOM: AuthenticatedAuthStatus = {
 export function isCodyProUser(authStatus: AuthStatus, sub: UserProductSubscription | null): boolean {
     return isDotCom(authStatus) && authStatus.authenticated && sub !== null && !sub.userCanUpgrade
 }
-
-export function isFreeUser(authStatus: AuthStatus, sub: UserProductSubscription | null): boolean {
-    return isDotCom(authStatus) && authStatus.authenticated && sub !== null && !!sub.userCanUpgrade
-}
-
 export function isEnterpriseUser(authStatus: AuthStatus): boolean {
     return !isDotCom(authStatus)
 }

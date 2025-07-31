@@ -28,7 +28,6 @@ import {
     useRef,
     useState,
 } from 'react'
-import type { UserAccountInfo } from '../../../../../Chat'
 import { type ClientActionListener, useClientActionListener } from '../../../../../client/clientState'
 import { promptModeToIntent } from '../../../../../prompts/promptUtils'
 import { useTelemetryRecorder } from '../../../../../utils/telemetry'
@@ -43,7 +42,6 @@ import { Toolbar } from './toolbar/Toolbar'
  */
 export const HumanMessageEditor: FunctionComponent<{
     models: Model[]
-    userInfo: UserAccountInfo
 
     initialEditorState: SerializedPromptEditorState | undefined
     placeholder: string
@@ -78,7 +76,6 @@ export const HumanMessageEditor: FunctionComponent<{
     manuallySelectIntent: (intent: ChatMessage['intent']) => void
 }> = ({
     models,
-    userInfo,
     initialEditorState,
     placeholder,
     isFirstMessage,
@@ -435,7 +432,6 @@ export const HumanMessageEditor: FunctionComponent<{
             {!disabled && (
                 <Toolbar
                     models={models}
-                    userInfo={userInfo}
                     isEditorFocused={focused}
                     onSubmitClick={onSubmitClick}
                     submitState={submitState}

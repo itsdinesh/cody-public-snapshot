@@ -7,7 +7,6 @@ import type {
     PriorHumanMessageInfo,
 } from './cells/messageCell/assistant/AssistantMessageCell'
 
-import type { UserAccountInfo } from '../Chat'
 import type { ApiPostMessage } from '../Chat'
 
 import { Button } from '../components/shadcn/ui/button'
@@ -20,18 +19,11 @@ import styles from './ErrorItem.module.css'
  */
 export const ErrorItem: React.FunctionComponent<{
     error: Omit<ChatError, 'isChatErrorGuard'>
-    userInfo: Pick<UserAccountInfo, 'isCodyProUser' | 'isDotComUser'>
     postMessage?: ApiPostMessage
     humanMessage?: PriorHumanMessageInfo | null
-}> = ({ error, userInfo, postMessage, humanMessage }) => {
+}> = ({ error, postMessage, humanMessage }) => {
     if (typeof error !== 'string' && error.name === RateLimitError.errorName && postMessage) {
-        return (
-            <RateLimitErrorItem
-                error={error as RateLimitError}
-                userInfo={userInfo}
-                postMessage={postMessage}
-            />
-        )
+        return <RateLimitErrorItem error={error as RateLimitError} postMessage={postMessage} />
     }
     return <RequestErrorItem error={error} humanMessage={humanMessage} />
 }
@@ -97,30 +89,18 @@ export const RequestErrorItem: React.FunctionComponent<{
  */
 const RateLimitErrorItem: React.FunctionComponent<{
     error: RateLimitError
-    userInfo: Pick<UserAccountInfo, 'isCodyProUser' | 'isDotComUser'>
     postMessage: ApiPostMessage
-}> = ({ error, userInfo, postMessage }) => {
-    // Only show Upgrades if both the error said an upgrade was available and we know the user
-    // has not since upgraded.
-    const isEnterpriseUser = userInfo.isDotComUser !== true
-    const canUpgrade = error.upgradeIsAvailable && !userInfo?.isCodyProUser
-    const tier = isEnterpriseUser ? 'enterprise' : canUpgrade ? 'free' : 'pro'
+}> = ({ error, postMessage }) => {
     const telemetryRecorder = useMemo(() => createWebviewTelemetryRecorder(postMessage), [postMessage])
 
-    // Only log once on mount
-    // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally only logs once on mount
     React.useEffect(() => {
         // Log as abuseUsageLimit if pro user run into rate limit
-        telemetryRecorder.recordEvent(
-            canUpgrade ? 'cody.upsellUsageLimitCTA' : 'cody.abuseUsageLimitCTA',
-            'shown',
-            {
-                privateMetadata: {
-                    limit_type: 'chat_commands',
-                    tier,
-                },
-            }
-        )
+        telemetryRecorder.recordEvent('cody.abuseUsageLimitCTA', 'shown', {
+            privateMetadata: {
+                limit_type: 'chat_commands',
+                tier: 'enterprise',
+            },
+        })
     }, [telemetryRecorder])
 
     const onButtonClick = useCallback(
@@ -130,14 +110,14 @@ const RateLimitErrorItem: React.FunctionComponent<{
                 privateMetadata: {
                     limit_type: 'chat_commands',
                     call_to_action,
-                    tier,
+                    tier: 'enterprise',
                 },
             })
 
             // open the page in browser
             postMessage({ command: 'show-page', page })
         },
-        [postMessage, tier, telemetryRecorder]
+        [postMessage, telemetryRecorder]
     )
 
     let ctaText = 'Unable to Send Message'

@@ -402,7 +402,6 @@ const TranscriptInteraction: FC<TranscriptInteractionProps> = memo(props => {
         isLastInteraction,
         isLastSentInteraction,
         priorAssistantMessageIsLoading,
-        userInfo,
         chatEnabled,
         chatCodeHighlightingEnabled,
         postMessage,
@@ -725,7 +724,6 @@ const TranscriptInteraction: FC<TranscriptInteractionProps> = memo(props => {
             )}
             <HumanMessageCell
                 key={humanMessage.index}
-                userInfo={userInfo}
                 models={models}
                 chatEnabled={chatEnabled}
                 message={humanMessage}
@@ -773,7 +771,6 @@ const TranscriptInteraction: FC<TranscriptInteractionProps> = memo(props => {
                     (assistantMessage.subMessages && assistantMessage.subMessages.length > 0)) && (
                     <AssistantMessageCell
                         key={assistantMessage.index}
-                        userInfo={userInfo}
                         models={models}
                         chatEnabled={chatEnabled}
                         chatCodeHighlightingEnabled={chatCodeHighlightingEnabled}
