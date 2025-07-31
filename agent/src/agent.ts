@@ -14,7 +14,6 @@ import {
     firstNonPendingAuthStatus,
     firstResultFromOperation,
     getAuthHeaders,
-    isDotCom,
     resolvedConfig,
     telemetryRecorder,
     waitUntilComplete,
@@ -1285,7 +1284,7 @@ export class Agent extends MessageHandler implements ExtensionClient {
         this.registerAuthenticatedRequest('chat/models', async ({ modelUsage }) => {
             const clientConfig = await ClientConfigSingleton.getInstance().getConfig()
             return {
-                readOnly: !(isDotCom(currentAuthStatus()) || clientConfig?.modelsAPIEnabled),
+                readOnly: !clientConfig?.modelsAPIEnabled,
                 models: await modelsService.getModelsAvailabilityStatus(modelUsage),
             }
         })
