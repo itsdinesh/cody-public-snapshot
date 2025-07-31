@@ -110,11 +110,6 @@ async function getFileBranchMentions(repoName: string, branchQuery?: string): Pr
         branchQuery,
     })
 
-    // If no branch mentions found, fallback to file search
-    if (branchMentions.length === 0) {
-        return await getFileMentions(repoName, '')
-    }
-
     return branchMentions
 }
 
