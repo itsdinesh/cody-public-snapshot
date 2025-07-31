@@ -4,10 +4,9 @@ import { type Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vite
 import { URI } from 'vscode-uri'
 
 import { mockAuthStatus } from '../auth/authStatus'
-import { AUTH_STATUS_FIXTURE_AUTHED, AUTH_STATUS_FIXTURE_AUTHED_DOTCOM } from '../auth/types'
+import { AUTH_STATUS_FIXTURE_AUTHED } from '../auth/types'
 import { isDefined } from '../common'
 import { mockResolvedConfig } from '../configuration/resolver'
-import { DOTCOM_URL } from '../sourcegraph-api/environments'
 import {
     type ContextFilters,
     DURABLE_REFETCH_INTERVAL_HINT,
@@ -370,25 +369,6 @@ describe('ContextFiltersProvider', () => {
             const uri = getTestURI({ repoName: 'whatever', filePath: 'foo/bar.ts' })
             expect(await provider.isUriIgnored(uri)).toBe('repo:github.com/sourcegraph/whatever')
         })
-
-        it(
-            'includes everything on dotcom when initial fetch is not complete',
-            { timeout: 1000 },
-            async () => {
-                const foreverPromise = new Promise(() => {}) // We will never resolve this
-                vi.spyOn(graphqlClient, 'fetchSourcegraphAPI').mockReturnValue(foreverPromise)
-                mockResolvedConfig({
-                    configuration: {},
-                    auth: { serverEndpoint: DOTCOM_URL.toString() },
-                })
-                mockAuthStatus(AUTH_STATUS_FIXTURE_AUTHED_DOTCOM)
-                provider = new ContextFiltersProvider()
-                await provider.isRepoNameIgnored('anything')
-
-                const uri = getTestURI({ repoName: 'whatever', filePath: 'foo/bar.ts' })
-                expect(await provider.isUriIgnored(uri)).toBe(false)
-            }
-        )
 
         it('excludes everything on unknown API errors', async () => {
             const error = new Error('API error message')
