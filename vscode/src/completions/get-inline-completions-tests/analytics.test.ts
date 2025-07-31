@@ -4,11 +4,7 @@ import { Response } from 'node-fetch'
 import * as uuid from 'uuid'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
-import {
-    AUTH_STATUS_FIXTURE_AUTHED,
-    AUTH_STATUS_FIXTURE_AUTHED_DOTCOM,
-    telemetryRecorder,
-} from '@sourcegraph/cody-shared'
+import { AUTH_STATUS_FIXTURE_AUTHED, telemetryRecorder } from '@sourcegraph/cody-shared'
 
 import type { CodeGenEventMetadata } from '../../services/CharactersLogger'
 import { resetParsersCache } from '../../tree-sitter/parser'
@@ -30,7 +26,7 @@ describe('[getInlineCompletions] completion event', () => {
     async function getAnalyticsEvent(
         code: string,
         completion: string,
-        additionalParams: { isDotComUser?: boolean } = {}
+        additionalParams = {}
     ): Promise<CompletionBookkeepingEvent> {
         vi.spyOn(uuid, 'v4').mockImplementation(() => 'stable-uuid')
         const spy = vi.spyOn(CompletionAnalyticsLogger, 'loaded')
@@ -62,9 +58,7 @@ describe('[getInlineCompletions] completion event', () => {
                         autocompleteAdvancedProvider: 'fireworks',
                     },
                 },
-                authStatus: additionalParams.isDotComUser
-                    ? AUTH_STATUS_FIXTURE_AUTHED_DOTCOM
-                    : AUTH_STATUS_FIXTURE_AUTHED,
+                authStatus: AUTH_STATUS_FIXTURE_AUTHED,
             }
         )
         const completionResponse = await getInlineCompletions(generateParams)
@@ -78,7 +72,6 @@ describe('[getInlineCompletions] completion event', () => {
             document: generateParams.document,
             completion: completionResponse!.items[0],
             trackedRange: undefined,
-            isDotComUser: true,
             position: generateParams.position,
         })
 
@@ -254,13 +247,6 @@ describe('[getInlineCompletions] completion event', () => {
             expect(event.items?.some(item => item.insertText)).toBe(false)
         })
 
-        it('logs `insertText` only for DotCom users', async () => {
-            const event = await getAnalyticsEvent('function foo() {\n  return█}', '"foo"', {
-                isDotComUser: true,
-            })
-
-            expect(event.items?.some(item => item.insertText)).toBe(true)
-        })
         it('does not log `inlineCompletionItemContext` for enterprise users', async () => {
             const event = await getAnalyticsEvent('function foo() {\n  return█}', '"foo"')
             expect(event.params?.inlineCompletionItemContext).toBeUndefined()

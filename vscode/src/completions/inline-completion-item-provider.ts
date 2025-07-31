@@ -7,11 +7,9 @@ import {
     FeatureFlag,
     type IsIgnored,
     RateLimitError,
-    authStatus,
     contextFiltersProvider,
     featureFlagProvider,
     isAuthError,
-    isDotCom,
     subscriptionDisposable,
     telemetryRecorder,
     wrapInActiveSpan,
@@ -128,9 +126,6 @@ export class InlineCompletionItemProvider
      */
     private shouldSample = false
 
-    /** Value derived from the {@link authStatus}, available synchronously. */
-    private isDotComUser = false
-
     public get config(): InlineCompletionItemProviderConfig {
         return InlineCompletionItemProviderConfigSingleton.configuration
     }
@@ -167,14 +162,6 @@ export class InlineCompletionItemProvider
                     .subscribe(shouldSample => {
                         this.shouldSample = Boolean(shouldSample)
                     })
-            )
-        )
-
-        this.disposables.push(
-            subscriptionDisposable(
-                authStatus.subscribe(({ endpoint }) => {
-                    this.isDotComUser = isDotCom(endpoint)
-                })
             )
         )
 
@@ -691,7 +678,6 @@ export class InlineCompletionItemProvider
             document: completion.requestParams.document,
             completion: completion.analyticsItem,
             trackedRange: completion.trackedRange,
-            isDotComUser: this.isDotComUser,
             position: completion.requestParams.position,
         })
     }
@@ -861,8 +847,7 @@ export class InlineCompletionItemProvider
         CompletionAnalyticsLogger.partiallyAccept(
             completion.logId,
             completion.analyticsItem,
-            acceptedLength,
-            this.isDotComUser
+            acceptedLength
         )
     }
 
@@ -917,9 +902,8 @@ export class InlineCompletionItemProvider
                 return
             }
 
-            const isEnterpriseUser = this.isDotComUser !== true
             const canUpgrade = error.upgradeIsAvailable
-            const tier = isEnterpriseUser ? 'enterprise' : canUpgrade ? 'free' : 'pro'
+            const tier = 'enterprise'
 
             let errorTitle: string
             let pageName: string

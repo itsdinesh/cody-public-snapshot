@@ -261,7 +261,7 @@ describe.skip('InlineCompletionItemProvider E2E', () => {
 
             // Enough for completion events to be logged
             vi.advanceTimersByTime(1000)
-            CompletionAnalyticsLogger.logSuggestionEvents(true)
+            CompletionAnalyticsLogger.logSuggestionEvents()
 
             expect(getAnalyticEventCalls(logSpy)).toMatchInlineSnapshot(`
               [
@@ -313,7 +313,7 @@ describe.skip('InlineCompletionItemProvider E2E', () => {
 
             // Enough for completion events to be logged
             vi.advanceTimersByTime(1000)
-            CompletionAnalyticsLogger.logSuggestionEvents(true)
+            CompletionAnalyticsLogger.logSuggestionEvents()
 
             expect(getAnalyticEventCalls(logSpy)).toMatchInlineSnapshot(`
               [
@@ -382,7 +382,7 @@ describe.skip('InlineCompletionItemProvider E2E', () => {
 
             // Enough for completion events to be logged
             vi.advanceTimersByTime(1000)
-            CompletionAnalyticsLogger.logSuggestionEvents(true)
+            CompletionAnalyticsLogger.logSuggestionEvents()
 
             expect(getAnalyticEventCalls(logSpy)).toMatchInlineSnapshot(`
               [

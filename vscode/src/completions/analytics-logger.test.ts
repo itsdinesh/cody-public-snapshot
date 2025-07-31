@@ -85,7 +85,6 @@ describe('analytics-logger', () => {
             document,
             completion: item,
             trackedRange: range(0, 0, 0, 0),
-            isDotComUser: false,
             position,
         })
 
@@ -151,7 +150,6 @@ describe('analytics-logger', () => {
             document,
             completion: item,
             trackedRange: range(0, 0, 0, 0),
-            isDotComUser: false,
             position,
         })
 
@@ -191,16 +189,16 @@ describe('analytics-logger', () => {
 
         const id = CompletionAnalyticsLogger.create(defaultArgs)
         CompletionAnalyticsLogger.start(id)
-        CompletionAnalyticsLogger.partiallyAccept(id, item, 5, false)
+        CompletionAnalyticsLogger.partiallyAccept(id, item, 5)
 
         expect(recordSpy).toHaveBeenCalledWith('cody.completion', 'partiallyAccepted', expect.anything())
 
-        CompletionAnalyticsLogger.partiallyAccept(id, item, 10, false)
+        CompletionAnalyticsLogger.partiallyAccept(id, item, 10)
 
         expect(recordSpy).toHaveBeenCalledWith('cody.completion', 'partiallyAccepted', expect.anything())
 
-        CompletionAnalyticsLogger.partiallyAccept(id, item, 5, false)
-        CompletionAnalyticsLogger.partiallyAccept(id, item, 8, false)
+        CompletionAnalyticsLogger.partiallyAccept(id, item, 5)
+        CompletionAnalyticsLogger.partiallyAccept(id, item, 8)
     })
 
     describe('getInlineContextItemToLog', () => {

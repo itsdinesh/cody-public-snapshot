@@ -144,7 +144,7 @@ describe('InlineCompletionItemProvider', () => {
         vi.advanceTimersByTime(250)
 
         // Check if telemetry event is recorded
-        CompletionAnalyticsLogger.logSuggestionEvents(true)
+        CompletionAnalyticsLogger.logSuggestionEvents()
         expect(spy.mock.calls.filter(event => event[0] === 'cody.completion')).toHaveLength(1)
         expect(spy).toHaveBeenCalledWith(
             'cody.completion',
@@ -489,7 +489,7 @@ describe('InlineCompletionItemProvider', () => {
                 expect(spy.mock.calls.filter(event => event[0] === 'cody.completion')).toHaveLength(0) // Not waited long enough
 
                 vi.advanceTimersByTime(250) // 500 + 250 = 750ms (time until completion is considered visible)
-                CompletionAnalyticsLogger.logSuggestionEvents(true)
+                CompletionAnalyticsLogger.logSuggestionEvents()
                 expect(spy.mock.calls.filter(event => event[0] === 'cody.completion')).toHaveLength(1)
                 expect(spy).toHaveBeenCalledWith(
                     'cody.completion',
@@ -524,7 +524,7 @@ describe('InlineCompletionItemProvider', () => {
                 } as any)
 
                 vi.advanceTimersByTime(250) // 500 + 250 = 750ms (time until completion is considered visible)
-                CompletionAnalyticsLogger.logSuggestionEvents(true)
+                CompletionAnalyticsLogger.logSuggestionEvents()
                 expect(spy.mock.calls.filter(event => event[0] === 'cody.completion')).toHaveLength(1)
                 expect(spy).toHaveBeenCalledWith(
                     'cody.completion',
@@ -559,7 +559,7 @@ describe('InlineCompletionItemProvider', () => {
                 } as any)
 
                 vi.advanceTimersByTime(250) // 500 + 250 = 750ms (time until completion is considered visible)
-                CompletionAnalyticsLogger.logSuggestionEvents(true)
+                CompletionAnalyticsLogger.logSuggestionEvents()
                 expect(spy.mock.calls.filter(event => event[0] === 'cody.completion')).toHaveLength(1)
                 expect(spy).toHaveBeenCalledWith(
                     'cody.completion',

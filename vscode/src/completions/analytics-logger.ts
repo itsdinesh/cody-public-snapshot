@@ -266,7 +266,6 @@ interface FormatEventPayload {
 }
 
 function logCompletionSuggestedEvent(
-    isDotComUser: boolean,
     inlineCompletionItemContext: InlineCompletionItemContext | undefined,
     params: SuggestedEventPayload
 ): void {
@@ -282,8 +281,7 @@ function logCompletionSuggestedEvent(
             version: 0,
             metadata: {
                 ...metadata,
-                recordsPrivateMetadataTranscript:
-                    isDotComUser && inlineCompletionItemContext !== undefined ? 1 : 0,
+                recordsPrivateMetadataTranscript: 0,
             },
             privateMetadata,
         },
@@ -724,7 +722,7 @@ export function loaded(params: LoadedParams): void {
         event.loadedAt = getTimeNowInMilliseconds()
     }
     if (event.items.length === 0) {
-        event.items = completions.map(item => completionItemToItemInfo(item, isDotComUser))
+        event.items = completions.map(item => completionItemToItemInfo(item))
     }
 
     if (!event.params.resolvedModel && completions[0]?.resolvedModel) {
@@ -907,14 +905,12 @@ export function accepted({
     document,
     completion,
     trackedRange,
-    isDotComUser,
     position,
 }: {
     id: CompletionLogID
     document: vscode.TextDocument
     completion: InlineCompletionItemWithAnalytics
     trackedRange: vscode.Range | undefined
-    isDotComUser: boolean
     position: vscode.Position
 }): void {
     const completionEvent = activeSuggestionRequests.get(id)
@@ -982,11 +978,11 @@ export function accepted({
             reason: undefined,
         })
 
-    logSuggestionEvents(isDotComUser)
+    logSuggestionEvents()
     logCompletionAcceptedEvent({
         ...charactersLoggerMetadata,
         ...getSharedParams(completionEvent),
-        acceptedItem: completionItemToItemInfo(completion, isDotComUser),
+        acceptedItem: completionItemToItemInfo(completion),
     })
     statistics.logAccepted()
 
@@ -1027,8 +1023,7 @@ export function accepted({
 export function partiallyAccept(
     id: CompletionLogID,
     completion: InlineCompletionItemWithAnalytics,
-    acceptedLength: number,
-    isDotComUser: boolean
+    acceptedLength: number
 ): void {
     const completionEvent = activeSuggestionRequests.get(id)
     // Only log partial acceptances if the completion was not yet fully accepted
@@ -1048,7 +1043,7 @@ export function partiallyAccept(
 
     logCompletionPartiallyAcceptedEvent({
         ...getSharedParams(completionEvent),
-        acceptedItem: completionItemToItemInfo(completion, isDotComUser),
+        acceptedItem: completionItemToItemInfo(completion),
         acceptedLength,
         acceptedLengthDelta,
     })
@@ -1071,8 +1066,8 @@ export function noResponse(id: CompletionLogID): void {
  * This callback should be triggered whenever VS Code tries to highlight a new completion and it's
  * used to measure how long previous completions were visible.
  */
-export function flushActiveSuggestionRequests(isDotComUser: boolean): void {
-    logSuggestionEvents(isDotComUser)
+export function flushActiveSuggestionRequests(): void {
+    logSuggestionEvents()
 }
 
 export function getInlineContextItemToLog(
@@ -1108,7 +1103,7 @@ export function getInlineContextItemToLog(
 
     return { ...inlineCompletionItemContext, ...result }
 }
-export function logSuggestionEvents(isDotComUser: boolean): void {
+export function logSuggestionEvents(): void {
     const now = getTimeNowInMilliseconds()
     // biome-ignore lint/complexity/noForEach: LRUCache#forEach has different typing than #entries, so just keeping it for now
     activeSuggestionRequests.forEach(completionEvent => {
@@ -1152,7 +1147,7 @@ export function logSuggestionEvents(isDotComUser: boolean): void {
             }
         }
 
-        logCompletionSuggestedEvent(isDotComUser, inlineCompletionItemContext, {
+        logCompletionSuggestedEvent(inlineCompletionItemContext, {
             ...getSharedParams(completionEvent),
             latency,
             displayDuration,
@@ -1239,13 +1234,10 @@ function getSharedParams(event: CompletionBookkeepingEvent): SharedEventPayload 
     }
 }
 
-function completionItemToItemInfo(
-    item: InlineCompletionItemWithAnalytics,
-    isDotComUser: boolean
-): CompletionItemInfo {
+function completionItemToItemInfo(item: InlineCompletionItemWithAnalytics): CompletionItemInfo {
     const { lineCount, charCount } = lineAndCharCount(item)
 
-    const completionItemInfo: CompletionItemInfo = {
+    return {
         lineCount,
         charCount,
         stopReason: item.stopReason,
@@ -1255,15 +1247,6 @@ function completionItemToItemInfo(
         nodeTypes: item.nodeTypes,
         nodeTypesWithCompletion: item.nodeTypesWithCompletion,
     }
-
-    // Do not log long insert text.
-    // 200 is a char_count limit based on the 98 percentile from the last 14 days.
-    if (isDotComUser && charCount < 200) {
-        // 🚨 SECURITY: included only for DotCom users.
-        completionItemInfo.insertText = item.insertText
-    }
-
-    return completionItemInfo
 }
 
 const otherCompletionProviders = [

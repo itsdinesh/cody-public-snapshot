@@ -310,7 +310,7 @@ async function doGetInlineCompletions(
     // has passed to ensure we don't log too many start events where we end up not doing any work at
     // all.
     if (triggerKind !== TriggerKind.Preload) {
-        CompletionAnalyticsLogger.flushActiveSuggestionRequests(isDotComUser)
+        CompletionAnalyticsLogger.flushActiveSuggestionRequests()
     }
     const multiline = Boolean(multilineTrigger)
     const logId = CompletionAnalyticsLogger.create({
