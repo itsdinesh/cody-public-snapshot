@@ -27,10 +27,15 @@ export function createRemoteFileProvider(customTitle?: string): OpenCtxProvider 
         },
 
         async mentions({ query }) {
-            const [repoName, filePath] = query?.split(':') || []
+            const trimmedQuery = query?.trim()
+            if (!trimmedQuery) {
+                return await getRepositoryMentions('', REMOTE_FILE_PROVIDER_URI)
+            }
 
-            if (!query?.includes(':') || !repoName.trim()) {
-                return await getRepositoryMentions(query?.trim() ?? '', REMOTE_FILE_PROVIDER_URI)
+            const [repoName, filePath] = trimmedQuery.split(':') || []
+
+            if (!repoName.includes('@')) {
+                return await getFileBranchMentions(repoName, filePath.trim())
             }
 
             // Check if we should show branch suggestions for this repository
@@ -41,9 +46,6 @@ export function createRemoteFileProvider(customTitle?: string): OpenCtxProvider 
                 return await getFileMentions(repoNamePart, filePath.trim(), branch)
             }
 
-            if (!repoName.includes('@')) {
-                return await getFileBranchMentions(repoName, filePath.trim())
-            }
             return await getFileBranchMentions(repoName)
         },
 

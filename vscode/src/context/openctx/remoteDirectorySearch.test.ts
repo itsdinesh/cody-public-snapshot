@@ -6,7 +6,7 @@ import {
     mockResolvedConfig,
 } from '@sourcegraph/cody-shared'
 import { describe, expect, test, vi } from 'vitest'
-import { createRemoteDirectoryProvider, extractRepoAndBranch } from './remoteDirectorySearch'
+import { createRemoteDirectoryProvider } from './remoteDirectorySearch'
 
 // Mock the getRepositoryMentions function
 vi.mock('./common/get-repository-mentions', () => ({
@@ -19,82 +19,6 @@ mockClientCapabilities(CLIENT_CAPABILITIES_FIXTURE)
 const auth = { serverEndpoint: 'https://sourcegraph.com' }
 const SEARCH_FILE_MATCHES =
     'repo:^test-repo$@feature-branch file:^[^/]+/[^/]+$ -file:^\\. select:file.directory count:1000'
-
-describe('RemoteDirectoryProvider branch parsing', () => {
-    describe('extractRepoAndBranch', () => {
-        test('should extract repo name without branch', () => {
-            const [repo, branch] = extractRepoAndBranch('test-repo')
-            expect(repo).toBe('test-repo')
-            expect(branch).toBeUndefined()
-        })
-
-        test('should extract repo name with branch', () => {
-            const [repo, branch] = extractRepoAndBranch('test-repo@feature-branch')
-            expect(repo).toBe('test-repo')
-            expect(branch).toBe('feature-branch')
-        })
-
-        test('should handle repo:directory format without branch', () => {
-            const [repo, branch] = extractRepoAndBranch('test-repo:src/components')
-            expect(repo).toBe('test-repo')
-            expect(branch).toBeUndefined()
-        })
-
-        test('should handle repo@branch:directory format', () => {
-            const [repo, branch] = extractRepoAndBranch('test-repo@dev:src/components')
-            expect(repo).toBe('test-repo')
-            expect(branch).toBe('dev')
-        })
-
-        test('should handle complex branch names', () => {
-            const [repo, branch] = extractRepoAndBranch('my-repo@feature/fix-123')
-            expect(repo).toBe('my-repo')
-            expect(branch).toBe('feature/fix-123')
-        })
-
-        test('should handle empty string', () => {
-            const [repo, branch] = extractRepoAndBranch('')
-            expect(repo).toBe('')
-            expect(branch).toBeUndefined()
-        })
-
-        test('should handle @ at the end', () => {
-            const [repo, branch] = extractRepoAndBranch('test-repo@')
-            expect(repo).toBe('test-repo')
-            expect(branch).toBe('')
-        })
-
-        test('should extract github.com/mrdoob/three.js@dev correctly', () => {
-            const [repo, branch] = extractRepoAndBranch('github.com/mrdoob/three.js@dev')
-            expect(repo).toBe('github.com/mrdoob/three.js')
-            expect(branch).toBe('dev')
-        })
-
-        test('should handle branch names with slashes', () => {
-            const [repo, branch] = extractRepoAndBranch('test-repo@fix/feature')
-            expect(repo).toBe('test-repo')
-            expect(branch).toBe('fix/feature')
-        })
-
-        test('should handle complex branch names with multiple special characters', () => {
-            const [repo, branch] = extractRepoAndBranch('my-repo@feature/fix-123_test')
-            expect(repo).toBe('my-repo')
-            expect(branch).toBe('feature/fix-123_test')
-        })
-
-        test('should handle branch names with dots', () => {
-            const [repo, branch] = extractRepoAndBranch('test-repo@release/v1.2.3')
-            expect(repo).toBe('test-repo')
-            expect(branch).toBe('release/v1.2.3')
-        })
-
-        test('should handle repo:directory@branch format with special characters', () => {
-            const [repo, branch] = extractRepoAndBranch('test-repo@feature/fix-123:src/components')
-            expect(repo).toBe('test-repo')
-            expect(branch).toBe('feature/fix-123')
-        })
-    })
-})
 
 describe('RemoteDirectoryProvider mentions', () => {
     test('should handle branch selection for root directory search', async () => {
@@ -265,62 +189,7 @@ describe('RemoteDirectoryProvider mentions', () => {
         expect(graphqlClient.searchFileMatches).toHaveBeenCalledWith(SEARCH_FILE_MATCHES)
     })
 
-    test('should handle repo:@branch format (colon followed by @branch)', async () => {
-        // Mock the resolved config
-        mockResolvedConfig({
-            auth: {
-                serverEndpoint: auth.serverEndpoint,
-            },
-        })
-
-        // Mock the graphqlClient.searchFileMatches method
-        const mockSearchFileMatches = {
-            search: {
-                results: {
-                    results: [
-                        {
-                            __typename: 'FileMatch',
-                            repository: {
-                                id: 'repo-id',
-                                name: 'test-repo',
-                            },
-                            file: {
-                                url: '/test-repo@feature-branch/-/tree/docs',
-                                path: 'docs',
-                                commit: {
-                                    oid: 'abc123',
-                                },
-                            },
-                        },
-                    ],
-                },
-            },
-        }
-
-        vi.spyOn(graphqlClient, 'searchFileMatches').mockResolvedValue(mockSearchFileMatches)
-
-        const provider = createRemoteDirectoryProvider()
-        const mentions = await provider.mentions?.({ query: 'test-repo@feature-branch:' }, {})
-
-        expect(mentions).toHaveLength(1)
-        expect(mentions?.[0]).toEqual({
-            uri: `${auth.serverEndpoint}/test-repo@feature-branch/-/tree/docs`,
-            title: 'docs',
-            description: ' ',
-            data: {
-                repoName: 'test-repo',
-                repoID: 'repo-id',
-                rev: 'abc123',
-                directoryPath: 'docs',
-                branch: 'feature-branch',
-            },
-        })
-
-        // Verify the correct parameters were passed to searchFileMatches
-        expect(graphqlClient.searchFileMatches).toHaveBeenCalledWith(SEARCH_FILE_MATCHES)
-    })
-
-    test('should handle repo:@branch/directory format', async () => {
+    test('should handle repo@branch:/directory format', async () => {
         // Mock the resolved config
         mockResolvedConfig({
             auth: {
@@ -436,7 +305,7 @@ describe('RemoteDirectoryProvider mentions', () => {
         })
     })
 
-    test('should handle fuzzy branch search when user types repo:@query', async () => {
+    test('should handle fuzzy branch search when user types repo:query', async () => {
         // Mock the resolved config
         mockResolvedConfig({
             auth: {
@@ -608,71 +477,6 @@ describe('RemoteDirectoryProvider mentions', () => {
                 repoName: 'test-repo',
                 repoID: 'repo-id',
                 branch: 'apply-fog-fix',
-            },
-        })
-    })
-
-    test('should handle branch filtering without @ prefix', async () => {
-        // Mock the resolved config
-        mockResolvedConfig({
-            auth: {
-                serverEndpoint: auth.serverEndpoint,
-            },
-        })
-
-        // Mock getRepositoryMentions to return branch data
-        const { getRepositoryMentions } = await import('./common/get-repository-mentions')
-        vi.mocked(getRepositoryMentions).mockResolvedValue([
-            {
-                title: 'test-repo',
-                providerUri: REMOTE_DIRECTORY_PROVIDER_URI,
-                uri: `${auth.serverEndpoint}/test-repo`,
-                description: ' ',
-                data: {
-                    repoId: 'repo-id',
-                    repoName: 'test-repo',
-                    defaultBranch: 'main',
-                    branches: [
-                        'main',
-                        'feature/search-improvement',
-                        'feature/search-ui',
-                        'fix/search-bug',
-                        'develop',
-                    ],
-                    isIgnored: false,
-                },
-            },
-        ])
-
-        const provider = createRemoteDirectoryProvider()
-        // Test filtering branches without @ prefix - should match branches first
-        const mentions = await provider.mentions?.({ query: 'test-repo:feat' }, {})
-
-        expect(mentions).toHaveLength(2) // 2 matching branches
-
-        // Check that getRepositoryMentions was called
-        expect(getRepositoryMentions).toHaveBeenCalledWith('test-repo', REMOTE_DIRECTORY_PROVIDER_URI)
-
-        // Check that we get the matching branches (filtered by 'feat')
-        expect(mentions?.[0]).toEqual({
-            uri: `${auth.serverEndpoint}/test-repo@feature/search-improvement`,
-            title: '@feature/search-improvement',
-            description: ' ',
-            data: {
-                repoName: 'test-repo',
-                repoID: 'repo-id',
-                branch: 'feature/search-improvement',
-            },
-        })
-
-        expect(mentions?.[1]).toEqual({
-            uri: `${auth.serverEndpoint}/test-repo@feature/search-ui`,
-            title: '@feature/search-ui',
-            description: ' ',
-            data: {
-                repoName: 'test-repo',
-                repoID: 'repo-id',
-                branch: 'feature/search-ui',
             },
         })
     })

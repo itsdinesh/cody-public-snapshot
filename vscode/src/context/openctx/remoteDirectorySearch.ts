@@ -8,31 +8,6 @@ import { escapeRegExp } from './remoteFileSearch'
 
 import type { OpenCtxProvider } from './types'
 
-/**
- * Extracts repo name and optional branch from a string.
- * Supports formats: "repo@branch", "repo", or "repo:directory@branch"
- */
-export function extractRepoAndBranch(input: string): [string, string | undefined] {
-    // Handle case where input contains a colon (repo:directory@branch)
-    const colonIndex = input.indexOf(':')
-    if (colonIndex !== -1) {
-        const repoPart = input.substring(0, colonIndex)
-        const atIndex = repoPart.indexOf('@')
-        if (atIndex !== -1) {
-            return [repoPart.substring(0, atIndex), repoPart.substring(atIndex + 1)]
-        }
-        return [repoPart, undefined]
-    }
-
-    // Handle simple case: repo@branch or repo
-    const atIndex = input.indexOf('@')
-    if (atIndex !== -1) {
-        return [input.substring(0, atIndex), input.substring(atIndex + 1)]
-    }
-
-    return [input, undefined]
-}
-
 const RemoteDirectoryProvider = createRemoteDirectoryProvider()
 
 export function createRemoteDirectoryProvider(customTitle?: string): OpenCtxProvider {
@@ -91,7 +66,7 @@ export function createRemoteDirectoryProvider(customTitle?: string): OpenCtxProv
 
 async function getDirectoryMentions(repoName: string, directoryPath?: string): Promise<Mention[]> {
     // Parse repo name and optional branch (format: repo@branch or repo:directory@branch)
-    const [repoNamePart, branchPart] = extractRepoAndBranch(repoName)
+    const [repoNamePart, branchPart] = repoName.split('@')
     const repoRe = `^${escapeRegExp(repoNamePart)}$`
     const directoryRe = directoryPath ? escapeRegExp(directoryPath) : ''
     const repoWithBranch = branchPart ? `${repoRe}@${escapeRegExp(branchPart)}` : repoRe
