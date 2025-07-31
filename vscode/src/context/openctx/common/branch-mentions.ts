@@ -27,7 +27,7 @@ export async function getBranchMentions(options: BranchMentionOptions): Promise<
     }
 
     const branches = (repoMention.data.branches as string[]) || []
-    const defaultBranch = repoMention.data.defaultBranch as string | undefined
+    const defaultBranch = (repoMention.data.defaultBranch as string) || ''
     const repoId = repoMention.data.repoId as string
 
     // If no branch info available, return empty

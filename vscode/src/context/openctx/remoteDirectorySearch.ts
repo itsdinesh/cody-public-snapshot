@@ -133,31 +133,40 @@ async function getDirectoryItem(
         auth: { serverEndpoint },
     } = await currentResolvedConfig()
 
-    const items: Item[] = []
-    for (const entry of entries) {
-        if (!entry.rawURL || entry.binary) {
-            continue
-        }
+    // Filter out binary files and entries without rawURL
+    const validEntries = entries.filter(entry => entry.rawURL && !entry.binary)
 
-        let content = ''
-        const rawContent = await graphqlClient.fetchContentFromRawURL(entry.rawURL)
-        if (!isError(rawContent)) {
-            content = rawContent
+    // Fetch content in parallel for better performance
+    const contentPromises = validEntries.map(async entry => {
+        try {
+            const content = await graphqlClient.fetchContentFromRawURL(entry.rawURL!)
+            if (isError(content)) {
+                console.error(`Failed to fetch content for ${entry.path}:`, content)
+                return null
+            }
+            return {
+                entry,
+                content,
+            }
+        } catch (error) {
+            console.error(`Error fetching content for ${entry.path}:`, error)
+            return null
         }
+    })
 
-        if (content) {
-            items.push({
-                url: revision
-                    ? `${serverEndpoint.replace(/\/$/, '')}/${repoName}@${revision}/-/blob/${entry.path}`
-                    : `${serverEndpoint.replace(/\/$/, '')}${entry.url}`,
-                title: entry.path,
-                ai: {
-                    content,
-                },
-            })
-        }
-    }
-    return items
+    const results = await Promise.all(contentPromises)
+
+    return results
+        .filter(result => result !== null)
+        .map(({ entry, content }) => ({
+            url: revision
+                ? `${serverEndpoint.replace(/\/$/, '')}/${repoName}@${revision}/-/blob/${entry.path}`
+                : `${serverEndpoint.replace(/\/$/, '')}${entry.url}`,
+            title: entry.path,
+            ai: {
+                content: content || '', // Include empty files
+            },
+        }))
 }
 
 export default RemoteDirectoryProvider

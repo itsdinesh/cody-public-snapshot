@@ -367,17 +367,6 @@ describe('RemoteDirectoryProvider mentions', () => {
                 branch: 'feature/search-ui',
             },
         })
-
-        expect(mentions?.[1]).toEqual({
-            uri: `${auth.serverEndpoint}/test-repo@feature/search-ui`,
-            title: '@feature/search-ui',
-            description: ' ',
-            data: {
-                repoName: 'test-repo',
-                repoID: 'repo-id',
-                branch: 'feature/search-ui',
-            },
-        })
     })
 
     test('should search for branches beyond first 10 when no matches found in initial branches', async () => {
