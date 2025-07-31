@@ -1,6 +1,6 @@
 import { Observable, interval, map } from 'observable-fns'
 import { currentAuthStatusOrNotReadyYet, mockAuthStatus } from '../auth/authStatus'
-import { type AuthStatus, isCodyProUser, isFreeUser } from '../auth/types'
+import type { AuthStatus } from '../auth/types'
 import type { ClientConfiguration } from '../configuration'
 import { clientCapabilities } from '../configuration/clientCapabilities'
 import { cenv } from '../configuration/environment'
@@ -21,7 +21,6 @@ import {
 import { pendingOperation, switchMapReplayOperation } from '../misc/observableOperation'
 import { ANSWER_TOKENS } from '../prompt/constants'
 import type { CodyClientConfig } from '../sourcegraph-api/clientConfig'
-import { isDotCom } from '../sourcegraph-api/environments'
 import type { RateLimitError } from '../sourcegraph-api/errors'
 import type { CodyLLMSiteConfiguration } from '../sourcegraph-api/graphql/client'
 import { RestClient } from '../sourcegraph-api/rest/client'
@@ -154,10 +153,6 @@ export function syncModels({
                     return Observable.of<RemoteModelsData>({ primaryModels: [], preferences: null })
                 }
 
-                const isDotComUser = isDotCom(authStatus)
-                const isCodyFreeUser =
-                    userProductSubscription == null || userProductSubscription.userCanUpgrade === true
-
                 const serverModelsConfig: Observable<
                     RemoteModelsData | Error | typeof pendingOperation
                 > = clientConfig.pipe(
@@ -165,7 +160,7 @@ export function syncModels({
                         // NOTE: isDotComUser to enable server-side models for DotCom users,
                         // as the modelsAPIEnabled is default to return false on DotCom to avoid older clients
                         // that also share the same check from breaking.
-                        if (isDotComUser || maybeServerSideClientConfig?.modelsAPIEnabled) {
+                        if (maybeServerSideClientConfig?.modelsAPIEnabled) {
                             logDebug('ModelsService', 'new models API enabled')
                             return promiseFactoryToObservable(signal =>
                                 fetchServerSideModels_(config, signal)
@@ -205,19 +200,12 @@ export function syncModels({
                                                         serverModelsConfig?.models.filter(
                                                             m =>
                                                                 m.status !== 'deprecated' &&
-                                                                (isDotComUser || m.status !== 'waitlist')
+                                                                m.status !== 'waitlist'
                                                         )
                                                     data.primaryModels = maybeAdjustContextWindows(
                                                         filteredModels,
                                                         {
-                                                            tier: isDotComUser
-                                                                ? isCodyProUser(
-                                                                      authStatus,
-                                                                      userProductSubscription
-                                                                  )
-                                                                    ? 'pro'
-                                                                    : 'free'
-                                                                : 'enterprise',
+                                                            tier: 'enterprise',
                                                             enhancedContextWindowFlagEnabled:
                                                                 enhancedContextWindowFlag,
                                                         }
@@ -234,28 +222,8 @@ export function syncModels({
                                                         )
                                                 }
 
-                                                // TODO(sqs): remove waitlist from localStorage when user has access
-                                                if (isDotComUser && hasEarlyAccess) {
-                                                    data.primaryModels = data.primaryModels.map(
-                                                        model => {
-                                                            if (model.tags.includes(ModelTag.Waitlist)) {
-                                                                const newTags = model.tags.filter(
-                                                                    tag => tag !== ModelTag.Waitlist
-                                                                )
-                                                                newTags.push(
-                                                                    hasEarlyAccess
-                                                                        ? ModelTag.EarlyAccess
-                                                                        : ModelTag.OnWaitlist
-                                                                )
-                                                                return { ...model, tags: newTags }
-                                                            }
-                                                            return model
-                                                        }
-                                                    )
-                                                }
-
                                                 // Enterprise instances with early access flag enabled
-                                                const isVisionSupported = !isDotComUser && hasEarlyAccess
+                                                const isVisionSupported = hasEarlyAccess
                                                 data.primaryModels = data.primaryModels.map(m => ({
                                                     ...m,
                                                     // Gateway doesn't suppoort vision models for Google yet
@@ -264,19 +232,6 @@ export function syncModels({
                                                             ? m.tags
                                                             : m.tags.filter(t => t !== ModelTag.Vision),
                                                 }))
-
-                                                // Set the default model to Haiku for free users.
-                                                const haikuModel = data.primaryModels.find(m =>
-                                                    m.id.includes('5-haiku')
-                                                )
-                                                if (
-                                                    isDotComUser &&
-                                                    isCodyFreeUser &&
-                                                    defaultToHaiku &&
-                                                    haikuModel
-                                                ) {
-                                                    data.preferences!.defaults.chat = haikuModel.id
-                                                }
                                                 /**
                                                  * Handle rate limiting for paid users
                                                  *
@@ -288,10 +243,7 @@ export function syncModels({
                                                  * When rate limit is lifted:
                                                  * - Restores previously saved model preferences
                                                  */
-                                                if (
-                                                    fallbackToFlashFlag &&
-                                                    !isFreeUser(authStatus, userProductSubscription)
-                                                ) {
+                                                if (fallbackToFlashFlag) {
                                                     if (authStatus.rateLimited) {
                                                         // Disable all the models
 
