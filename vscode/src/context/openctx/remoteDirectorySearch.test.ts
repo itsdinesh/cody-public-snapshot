@@ -56,7 +56,7 @@ describe('RemoteDirectoryProvider mentions', () => {
         vi.spyOn(graphqlClient, 'searchFileMatches').mockResolvedValue(mockSearchFileMatches)
 
         const provider = createRemoteDirectoryProvider()
-        const mentions = await provider.mentions?.({ query: 'github.com/mrdoob/three.js@dev' }, {})
+        const mentions = await provider.mentions?.({ query: 'github.com/mrdoob/three.js@dev:' }, {})
 
         expect(mentions).toHaveLength(1)
 
@@ -169,7 +169,7 @@ describe('RemoteDirectoryProvider mentions', () => {
         vi.spyOn(graphqlClient, 'searchFileMatches').mockResolvedValue(mockSearchFileMatches)
 
         const provider = createRemoteDirectoryProvider()
-        const mentions = await provider.mentions?.({ query: 'test-repo@feature-branch' }, {})
+        const mentions = await provider.mentions?.({ query: 'test-repo@feature-branch:' }, {})
 
         expect(mentions).toHaveLength(1)
         expect(mentions?.[0]).toEqual({

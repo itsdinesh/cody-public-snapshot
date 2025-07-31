@@ -23,31 +23,21 @@ export function createRemoteDirectoryProvider(customTitle?: string): OpenCtxProv
 
         async mentions({ query }) {
             // Step 1: Start with showing repositories search
-            const trimmedQuery = query?.trim()
-            if (!trimmedQuery) {
-                return await getRepositoryMentions('', REMOTE_DIRECTORY_PROVIDER_URI)
+            const trimmedQuery = query?.trim() ?? ''
+            if (!trimmedQuery.includes(':')) {
+                return await getRepositoryMentions(trimmedQuery, REMOTE_DIRECTORY_PROVIDER_URI)
             }
 
-            // Step 2: Show Branch or Directory initial listing
-            const [repoName, pathPart] = trimmedQuery.split(':', 2)
-            if (!pathPart?.trim()) {
-                // Empty path after colon - check if repo has branch specified
-                if (repoName.includes('@')) {
-                    // repo@branch: - show directories for this branch
-                    return await getDirectoryMentions(repoName, '')
-                }
-
-                // repo: - show branch selection
-                return await getDirectoryBranchMentions(repoName)
-            }
-
-            // Step 3: If we have a path without an @, search for branches
+            // Step 2: Show Branch listing and allow searching
+            const [repoName, directoryPath] = trimmedQuery.split(':')
             if (!repoName.includes('@')) {
-                return await getDirectoryBranchMentions(repoName, pathPart.trim())
+                return await getDirectoryBranchMentions(repoName, directoryPath?.trim())
             }
 
-            // Step 4: No matching branches found, treat as directory search
-            return await getDirectoryMentions(repoName, pathPart.trim())
+            // This is "repo@branch:" - show file listing for this branch
+            // Step 3: branch found, treat as directory search
+            const [repoNamePart, branch] = repoName.split('@')
+            return await getDirectoryMentions(repoNamePart, directoryPath?.trim(), branch)
         },
 
         async items({ mention, message }) {
@@ -64,14 +54,16 @@ export function createRemoteDirectoryProvider(customTitle?: string): OpenCtxProv
     }
 }
 
-async function getDirectoryMentions(repoName: string, directoryPath?: string): Promise<Mention[]> {
-    // Parse repo name and optional branch (format: repo@branch or repo:directory@branch)
-    const [repoNamePart, branchPart] = repoName.split('@')
-    const repoRe = `^${escapeRegExp(repoNamePart)}$`
+async function getDirectoryMentions(
+    repoName: string,
+    directoryPath?: string,
+    branch?: string
+): Promise<Mention[]> {
+    const repoRe = `^${escapeRegExp(repoName)}$`
     const directoryRe = directoryPath ? escapeRegExp(directoryPath) : ''
-    const repoWithBranch = branchPart ? `${repoRe}@${escapeRegExp(branchPart)}` : repoRe
+    const repoWithBranch = branch ? `${repoRe}@${branch}` : repoRe
 
-    // For root directory search, use a pattern that finds top-level directories
+    // For root directory search, use a pattern that finds top-level directories without .directories
     const filePattern = directoryPath ? `^${directoryRe}.*\\/.*` : '^[^/]+/[^/]+$ -file:^\\.'
     const query = `repo:${repoWithBranch} file:${filePattern} select:file.directory count:1000`
 
@@ -97,7 +89,7 @@ async function getDirectoryMentions(repoName: string, directoryPath?: string): P
 
             // Construct URL with branch information if available
             const baseUrl = `${serverEndpoint.replace(/\/$/, '')}/${result.repository.name}`
-            const branchUrl = branchPart ? `${baseUrl}@${branchPart}` : baseUrl
+            const branchUrl = branch ? `${baseUrl}@${branch}` : baseUrl
             const url = `${branchUrl}/-/tree/${result.file.path}`
 
             return {
@@ -109,7 +101,7 @@ async function getDirectoryMentions(repoName: string, directoryPath?: string): P
                     repoID: result.repository.id,
                     rev: result.file.commit.oid,
                     directoryPath: result.file.path,
-                    branch: branchPart,
+                    branch: branch,
                 },
             } satisfies Mention
         })

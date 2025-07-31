@@ -27,16 +27,12 @@ export function createRemoteFileProvider(customTitle?: string): OpenCtxProvider 
         },
 
         async mentions({ query }) {
-            const trimmedQuery = query?.trim()
-            if (!trimmedQuery) {
-                return await getRepositoryMentions('', REMOTE_FILE_PROVIDER_URI)
+            const trimmedQuery = query?.trim() ?? ''
+            if (!trimmedQuery.includes(':')) {
+                return await getRepositoryMentions(trimmedQuery, REMOTE_FILE_PROVIDER_URI)
             }
 
             const [repoName, filePath] = trimmedQuery.split(':') || []
-
-            if (!repoName.includes('@')) {
-                return await getFileBranchMentions(repoName, filePath.trim())
-            }
 
             // Check if we should show branch suggestions for this repository
             // Check if repoName contains a branch (repo@branch format from mention menu)
@@ -46,7 +42,7 @@ export function createRemoteFileProvider(customTitle?: string): OpenCtxProvider 
                 return await getFileMentions(repoNamePart, filePath.trim(), branch)
             }
 
-            return await getFileBranchMentions(repoName)
+            return await getFileBranchMentions(repoName, filePath?.trim())
         },
 
         async items({ mention }) {
@@ -70,8 +66,8 @@ async function getFileMentions(
 ): Promise<Mention[]> {
     const repoRe = `^${escapeRegExp(repoName)}$`
     const fileRe = filePath ? escapeRegExp(filePath) : '^.*$'
-    const branchPart = branch ? `@${escapeRegExp(branch)}` : ''
-    const query = `repo:${repoRe}${branchPart} file:${fileRe} type:file count:10`
+    const repoWithBranch = branch ? `${repoRe}@${branch}` : repoRe
+    const query = `repo:${repoWithBranch} file:${fileRe} type:file count:10`
 
     const { auth } = await currentResolvedConfig()
     const dataOrError = await graphqlClient.searchFileMatches(query)
