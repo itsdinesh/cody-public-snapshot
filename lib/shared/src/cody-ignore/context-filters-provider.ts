@@ -4,12 +4,10 @@ import { LRUCache } from 'lru-cache'
 import type { Observable } from 'observable-fns'
 import { RE2JS as RE2 } from 're2js'
 import type * as vscode from 'vscode'
-import { currentAuthStatus } from '../auth/authStatus'
 import { isFileURI } from '../common/uri'
 import { cenv } from '../configuration/environment'
 import { logDebug, logError } from '../logger'
 import { fromVSCodeEvent } from '../misc/observable'
-import { isDotCom } from '../sourcegraph-api/environments'
 import { graphqlClient } from '../sourcegraph-api/graphql'
 import {
     type CodyContextFilterItem,
@@ -178,10 +176,6 @@ export class ContextFiltersProvider implements vscode.Disposable {
     }
 
     public async isRepoNameIgnored(repoName: string): Promise<boolean> {
-        if (isDotCom(currentAuthStatus())) {
-            return false
-        }
-
         await this.fetchIfNeeded()
         return this.isRepoNameIgnored__noFetch(repoName)
     }
@@ -214,9 +208,6 @@ export class ContextFiltersProvider implements vscode.Disposable {
     }
 
     public async isUriIgnored(uri: vscode.Uri): Promise<IsIgnored> {
-        if (isDotCom(currentAuthStatus())) {
-            return false
-        }
         if (!uri || allowedSchemes.has(uri.scheme)) {
             return false
         }
@@ -280,10 +271,7 @@ export class ContextFiltersProvider implements vscode.Disposable {
     }
 
     private hasAllowEverythingFilters(): boolean {
-        return (
-            isDotCom(currentAuthStatus()) ||
-            this.lastContextFiltersResponse === INCLUDE_EVERYTHING_CONTEXT_FILTERS
-        )
+        return this.lastContextFiltersResponse === INCLUDE_EVERYTHING_CONTEXT_FILTERS
     }
 
     private hasIgnoreEverythingFilters() {
