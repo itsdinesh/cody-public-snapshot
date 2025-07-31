@@ -83,32 +83,27 @@ async function searchRepositoryBranches(
     repoId: string,
     defaultBranch?: string
 ): Promise<Mention[]> {
-    try {
-        const response = await graphqlClient.getRepositoryBranches(repoName, 10, branchQuery)
+    const response = await graphqlClient.getRepositoryBranches(repoName, 10, branchQuery)
 
-        if (isError(response) || !response.repository) {
-            return []
-        }
-
-        const { repository } = response
-        const allBranches = repository.branches.nodes.map(node => node.abbrevName)
-        const repositoryDefaultBranch = repository.defaultBranch?.abbrevName || defaultBranch
-
-        // Filter branches client-side with the search query
-        const query = branchQuery.toLowerCase()
-        const filteredBranches = allBranches.filter(branch => branch.toLowerCase().includes(query))
-
-        return createBranchMentionsFromData({
-            repoName,
-            repoId,
-            defaultBranch: repositoryDefaultBranch,
-            branches: filteredBranches,
-            branchQuery,
-        })
-    } catch (error) {
-        // If the search fails, return empty array to fall back to client-side filtering
+    if (isError(response) || !response.repository) {
         return []
     }
+
+    const { repository } = response
+    const allBranches = repository.branches.nodes.map(node => node.abbrevName)
+    const repositoryDefaultBranch = repository.defaultBranch?.abbrevName || defaultBranch
+
+    // Filter branches client-side with the search query
+    const query = branchQuery.toLowerCase()
+    const filteredBranches = allBranches.filter(branch => branch.toLowerCase().includes(query))
+
+    return createBranchMentionsFromData({
+        repoName,
+        repoId,
+        defaultBranch: repositoryDefaultBranch,
+        branches: filteredBranches,
+        branchQuery,
+    })
 }
 
 /**
@@ -145,6 +140,7 @@ export async function createBranchMentionsFromData(
             mentions.push({
                 uri: `${serverEndpoint.replace(/\/$/, '')}/${repoName}@${branch}`,
                 title: `@${branch}`,
+                // needs to be a space to avoid showing the URL in the menu for branches
                 description: ' ',
                 data: {
                     repoName,
