@@ -22,7 +22,7 @@ vi.mock('vscode', () => ({
 }))
 
 import * as vscode from 'vscode'
-import { clearCache, getExcludePattern, readIgnoreFile } from './context-filter'
+import { clearCache, getExcludePattern, readIgnoreFile } from './findWorkspaceFiles'
 
 describe('readIgnoreFile', () => {
     it('parses basic gitignore patterns', async () => {
