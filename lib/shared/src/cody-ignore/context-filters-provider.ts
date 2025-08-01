@@ -335,7 +335,6 @@ export class ContextFiltersProvider implements vscode.Disposable {
     }
 
     private parseExcludePatternString(patternString: string): string[] {
-        // Handle empty or null pattern string
         if (!patternString || typeof patternString !== 'string') {
             return []
         }
@@ -346,7 +345,12 @@ export class ContextFiltersProvider implements vscode.Disposable {
             return content ? content.split(',').filter(pattern => pattern.trim() !== '') : []
         }
 
-        // Handle single pattern without braces: pattern
+        // Handle single pattern without braces - but reject patterns that look malformed
+        // (contains commas, unmatched braces)
+        if (patternString.includes(',') || patternString.includes('{') || patternString.includes('}')) {
+            return []
+        }
+
         return [patternString.trim()].filter(pattern => pattern !== '')
     }
 
