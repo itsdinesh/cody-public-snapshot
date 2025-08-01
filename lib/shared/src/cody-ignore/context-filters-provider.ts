@@ -97,7 +97,10 @@ export class ContextFiltersProvider implements vscode.Disposable {
 
     // Visible for testing.
     public get timerStateForTest() {
-        return { delay: this.lastFetchDelay, lifetime: this.lastResultLifetime }
+        return {
+            delay: this.lastFetchDelay,
+            lifetime: this.lastResultLifetime,
+        }
     }
 
     private readonly contextFiltersSubscriber = createSubscriber<ContextFilters | Error>()
@@ -337,12 +340,14 @@ export class ContextFiltersProvider implements vscode.Disposable {
             return []
         }
 
-        // Remove the surrounding braces and split by comma
-        if (!patternString.startsWith('{') || !patternString.endsWith('}')) {
-            return []
+        // Handle multiple patterns wrapped in braces: {pattern1,pattern2}
+        if (patternString.startsWith('{') && patternString.endsWith('}')) {
+            const content = patternString.slice(1, -1)
+            return content ? content.split(',').filter(pattern => pattern.trim() !== '') : []
         }
-        const content = patternString.slice(1, -1)
-        return content ? content.split(',').filter(pattern => pattern.trim() !== '') : []
+
+        // Handle single pattern without braces: pattern
+        return [patternString.trim()].filter(pattern => pattern !== '')
     }
 
     private reset(): void {
