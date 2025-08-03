@@ -608,20 +608,23 @@ function getModelsFromVSCodeConfiguration({
         })
     ) ?? []
 
-    // BYPASS: Add our spoofed default model with proper title
-    const spoofedModel = createModel({
-        id: 'anthropic::2024-10-22::claude-3-5-sonnet-latest',
-        usage: [ModelUsage.Chat, ModelUsage.Edit],
-        contextWindow: {
-            input: CHAT_INPUT_TOKEN_BUDGET,
-            output: ANSWER_TOKENS,
-        },
-        tags: [ModelTag.Pro],
-        provider: 'anthropic',
-        title: 'Claude 3.5 Sonnet (Latest)',
-    })
+    // BYPASS: Only add spoofed default model if no other models are configured
+    if (configModels.length === 0) {
+        const spoofedModel = createModel({
+            id: 'anthropic::2024-10-22::claude-3-5-sonnet-latest',
+            usage: [ModelUsage.Chat, ModelUsage.Edit],
+            contextWindow: {
+                input: CHAT_INPUT_TOKEN_BUDGET,
+                output: ANSWER_TOKENS,
+            },
+            tags: [ModelTag.Pro],
+            provider: 'anthropic',
+            title: 'Claude 3.5 Sonnet (Latest)',
+        })
+        return [spoofedModel]
+    }
 
-    return [...configModels, spoofedModel]
+    return configModels
 }
 
 // fetchServerSideModels contacts the Sourcegraph endpoint, and fetches the LLM models it
