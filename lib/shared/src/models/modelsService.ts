@@ -495,8 +495,22 @@ export class ModelsService {
      * and if that is not available, falling back to the default chat model.
      */
     public getDefaultEditModel(): Observable<EditModel | undefined | typeof pendingOperation> {
-        // BYPASS: Always return a default edit model - spoofed authentication
-        return Observable.of('anthropic::2024-10-22::claude-3-5-sonnet-latest' as EditModel)
+        // BYPASS: Check for user's selected model first, then fall back to default
+        return this.getDefaultModel(ModelUsage.Edit).pipe(
+            map((editModel) => {
+                if (editModel === pendingOperation) {
+                    return pendingOperation
+                }
+                
+                // If user has selected a model, use it
+                if (editModel && !editModel.tags.includes(ModelTag.Reasoning)) {
+                    return editModel.id as EditModel
+                }
+                
+                // Otherwise, fall back to our spoofed default
+                return 'anthropic::2024-10-22::claude-3-5-sonnet-latest' as EditModel
+            })
+        )
         
         // Original code commented out:
         // return combineLatest(
@@ -520,8 +534,22 @@ export class ModelsService {
         // )
     }
     public getDefaultChatModel(): Observable<ChatModel | undefined | typeof pendingOperation> {
-        // BYPASS: Always return a default chat model - spoofed authentication
-        return Observable.of('anthropic::2024-10-22::claude-3-5-sonnet-latest' as ChatModel)
+        // BYPASS: Check for user's selected model first, then fall back to default
+        return this.getDefaultModel(ModelUsage.Chat).pipe(
+            map(model => {
+                if (model === pendingOperation) {
+                    return pendingOperation
+                }
+                
+                // If user has selected a model, use it
+                if (model) {
+                    return model.id as ChatModel
+                }
+                
+                // Otherwise, fall back to our spoofed default
+                return 'anthropic::2024-10-22::claude-3-5-sonnet-latest' as ChatModel
+            })
+        )
         
         // Original code commented out:
         // return this.getDefaultModel(ModelUsage.Chat).pipe(

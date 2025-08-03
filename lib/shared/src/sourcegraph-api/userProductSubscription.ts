@@ -2,7 +2,6 @@ import { Observable, map } from 'observable-fns'
 import { authStatus } from '../auth/authStatus'
 import {
     debounceTime,
-    firstValueFrom,
     pick,
     storeLastValue,
 } from '../misc/observable'
@@ -36,7 +35,7 @@ export const userProductSubscription: Observable<
     pick('authenticated', 'endpoint', 'pendingValidation'),
     debounceTime(0),
     switchMapReplayOperation(
-        (authStatus): Observable<UserProductSubscription | Error | null | typeof pendingOperation> => {
+        (authStatus): Observable<UserProductSubscription | null | typeof pendingOperation> => {
             if (authStatus.pendingValidation) {
                 return Observable.of(pendingOperation)
             }
