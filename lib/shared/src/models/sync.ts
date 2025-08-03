@@ -568,6 +568,7 @@ function normalizeModelList(models: Model[]): Model[] {
 export interface ChatModelProviderConfig {
     provider: string
     model: string
+    title?: string // Optional title for display purposes
     inputTokens?: number
     outputTokens?: number
     apiKey?: string
@@ -589,24 +590,38 @@ export interface ChatModelProviderConfig {
 function getModelsFromVSCodeConfiguration({
     configuration: { devModels },
 }: PickResolvedConfiguration<{ configuration: 'devModels' }>): Model[] {
-    return (
-        devModels?.map(m =>
-            createModel({
-                id: `${m.provider}/${m.model}`,
-                usage: [ModelUsage.Chat, ModelUsage.Edit],
-                contextWindow: {
-                    input: m.inputTokens ?? CHAT_INPUT_TOKEN_BUDGET,
-                    output: m.outputTokens ?? ANSWER_TOKENS,
-                },
-                clientSideConfig: {
-                    apiKey: m.apiKey,
-                    apiEndpoint: m.apiEndpoint,
-                    options: m.options,
-                },
-                tags: [ModelTag.Local, ModelTag.BYOK, ModelTag.Experimental],
-            })
-        ) ?? []
-    )
+    const configModels = devModels?.map(m =>
+        createModel({
+            id: `${m.provider}/${m.model}`,
+            usage: [ModelUsage.Chat, ModelUsage.Edit],
+            contextWindow: {
+                input: m.inputTokens ?? CHAT_INPUT_TOKEN_BUDGET,
+                output: m.outputTokens ?? ANSWER_TOKENS,
+            },
+            clientSideConfig: {
+                apiKey: m.apiKey,
+                apiEndpoint: m.apiEndpoint,
+                options: m.options,
+            },
+            tags: [ModelTag.Local, ModelTag.BYOK, ModelTag.Experimental],
+            title: m.title, // Use the title from config if provided
+        })
+    ) ?? []
+
+    // BYPASS: Add our spoofed default model with proper title
+    const spoofedModel = createModel({
+        id: 'anthropic::2024-10-22::claude-3-5-sonnet-latest',
+        usage: [ModelUsage.Chat, ModelUsage.Edit],
+        contextWindow: {
+            input: CHAT_INPUT_TOKEN_BUDGET,
+            output: ANSWER_TOKENS,
+        },
+        tags: [ModelTag.Pro],
+        provider: 'anthropic',
+        title: 'Claude 3.5 Sonnet (Latest)',
+    })
+
+    return [...configModels, spoofedModel]
 }
 
 // fetchServerSideModels contacts the Sourcegraph endpoint, and fetches the LLM models it
