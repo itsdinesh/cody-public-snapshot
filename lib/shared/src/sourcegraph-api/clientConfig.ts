@@ -127,28 +127,43 @@ export class ClientConfigSingleton {
      * emits changes.
      */
     public readonly changes: Observable<CodyClientConfig | undefined | typeof pendingOperation> =
-        authStatus.pipe(
-            debounceTime(0), // wait a tick for graphqlClient's auth to be updated
-            switchMapReplayOperation(authStatus =>
-                authStatus.authenticated
-                    ? interval(ClientConfigSingleton.REFETCH_INTERVAL).pipe(
-                          map(() => undefined),
-                          // Don't update if the editor is in the background, to avoid network
-                          // activity that can cause OS warnings or authorization flows when the
-                          // user is not using Cody. See
-                          // linear.app/sourcegraph/issue/CODY-3745/codys-background-periodic-network-access-causes-2fa.
-                          filter((_value): _value is undefined => editorWindowIsFocused()),
-                          startWith(undefined),
-                          switchMap(() =>
-                              promiseFactoryToObservable(signal => this.fetchConfig(signal))
-                          ),
-                          retry(3)
-                      )
-                    : Observable.of(undefined)
-            ),
-            map(value => (isError(value) ? undefined : value)),
-            distinctUntilChanged()
-        )
+        // BYPASS: Immediately return spoofed config without network requests
+        Observable.of({
+            chatEnabled: true,
+            autoCompleteEnabled: true,
+            customCommandsEnabled: true, // Always enable custom commands
+            attributionEnabled: true,
+            attribution: 'permissive',
+            smartContextWindowEnabled: true,
+            modelsAPIEnabled: true,
+            userShouldUseEnterprise: false,
+            notices: [],
+            siteVersion: '6.0.0', // Fake a modern version
+            omniBoxEnabled: true,
+            codeSearchEnabled: true,
+            chatCodeHighlightingEnabled: true,
+            latestSupportedCompletionsStreamAPIVersion: 1,
+        } as CodyClientConfig)
+        
+        // Original network-dependent code commented out:
+        // authStatus.pipe(
+        //     debounceTime(0),
+        //     switchMapReplayOperation(authStatus =>
+        //         authStatus.authenticated
+        //             ? interval(ClientConfigSingleton.REFETCH_INTERVAL).pipe(
+        //                   map(() => undefined),
+        //                   filter((_value): _value is undefined => editorWindowIsFocused()),
+        //                   startWith(undefined),
+        //                   switchMap(() =>
+        //                       promiseFactoryToObservable(signal => this.fetchConfig(signal))
+        //                   ),
+        //                   retry(3)
+        //               )
+        //             : Observable.of(undefined)
+        //     ),
+        //     map(value => (isError(value) ? undefined : value)),
+        //     distinctUntilChanged()
+        // )
 
     public readonly updates: Observable<CodyClientConfig> = this.changes.pipe(
         filter(value => value !== undefined && value !== pendingOperation),
@@ -173,7 +188,26 @@ export class ClientConfigSingleton {
     }
 
     public async getConfig(signal?: AbortSignal): Promise<CodyClientConfig | undefined> {
-        return await firstValueFrom(this.changes.pipe(skipPendingOperation()), signal)
+        // BYPASS: Always return spoofed config with all features enabled
+        const spoofedConfig: CodyClientConfig = {
+            chatEnabled: true,
+            autoCompleteEnabled: true,
+            customCommandsEnabled: true, // Always enable custom commands
+            attributionEnabled: true,
+            attribution: 'permissive',
+            smartContextWindowEnabled: true,
+            modelsAPIEnabled: true,
+            userShouldUseEnterprise: false,
+            notices: [],
+            siteVersion: '6.0.0', // Fake a modern version
+            omniBoxEnabled: true,
+            codeSearchEnabled: true,
+            chatCodeHighlightingEnabled: true,
+            latestSupportedCompletionsStreamAPIVersion: 1,
+        }
+        return spoofedConfig
+        // Original code commented out:
+        // return await firstValueFrom(this.changes.pipe(skipPendingOperation()), signal)
     }
 
     private async fetchConfig(signal?: AbortSignal): Promise<CodyClientConfig> {

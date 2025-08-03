@@ -63,32 +63,75 @@ class AuthProvider implements vscode.Disposable {
         signal?: AbortSignal,
         resetInitialAuthStatus?: boolean
     ): Promise<void> {
-        if (resetInitialAuthStatus ?? true) {
-            // Immediately emit the unauthenticated status while we are authenticating.
-            // Emitting `authenticated: false` for a brief period is both true and a
-            // way to ensure that subscribers are robust to changes in
-            // authentication status.
-            this.status.next({
-                authenticated: false,
-                pendingValidation: true,
-                endpoint: credentials.auth.serverEndpoint,
-            })
+        // BYPASS: Always return authenticated status - spoofed authentication
+        const spoofedAuthStatus = {
+            authenticated: true,
+            endpoint: credentials.auth.serverEndpoint || DOTCOM_URL.toString(),
+            pendingValidation: false,
+            username: 'spoofed-user',
+            displayName: 'Spoofed Pro User',
+            avatarURL: '',
+            primaryEmail: { email: 'spoofed@example.com', verified: true },
+            hasVerifiedEmail: true,
+            siteRole: 'USER' as const,
+            siteVersion: '6.0.0',
+            codyApiVersion: 1,
+            configOverwrites: {},
+            userCanUpgrade: false,
+            isDotCom: true,
+            isFireworksTracingEnabled: false,
+            userOrganizations: { nodes: [] },
         }
-
-        try {
-            const authStatus = await validateCredentials(credentials, signal, undefined)
-            signal?.throwIfAborted()
-            this.status.next(authStatus)
-            await this.handleAuthTelemetry(authStatus, signal)
-        } catch (error) {
-            if (!isAbortError(error)) {
-                logError('AuthProvider', 'Unexpected error validating credentials', error)
-            }
-        }
+        
+        this.status.next(spoofedAuthStatus)
+        await this.handleAuthTelemetry(spoofedAuthStatus, signal)
+        
+        // Original code commented out:
+        // if (resetInitialAuthStatus ?? true) {
+        //     this.status.next({
+        //         authenticated: false,
+        //         pendingValidation: true,
+        //         endpoint: credentials.auth.serverEndpoint,
+        //     })
+        // }
+        // try {
+        //     const authStatus = await validateCredentials(credentials, signal, undefined)
+        //     signal?.throwIfAborted()
+        //     this.status.next(authStatus)
+        //     await this.handleAuthTelemetry(authStatus, signal)
+        // } catch (error) {
+        //     if (!isAbortError(error)) {
+        //         logError('AuthProvider', 'Unexpected error validating credentials', error)
+        //     }
+        // }
     }
 
     constructor(setAuthStatusObservable = setAuthStatusObservable_, resolvedConfig = resolvedConfig_) {
         setAuthStatusObservable(this.status.pipe(distinctUntilChanged()))
+
+        // BYPASS: Immediately emit spoofed authentication status on startup
+        const spoofedAuthStatus = {
+            authenticated: true,
+            endpoint: DOTCOM_URL.toString(),
+            pendingValidation: false,
+            username: 'spoofed-user',
+            displayName: 'Spoofed Pro User',
+            avatarURL: '',
+            primaryEmail: { email: 'spoofed@example.com', verified: true },
+            hasVerifiedEmail: true,
+            siteRole: 'USER' as const,
+            siteVersion: '6.0.0',
+            codyApiVersion: 1,
+            configOverwrites: {},
+            userCanUpgrade: false,
+            isDotCom: true,
+            isFireworksTracingEnabled: false,
+            userOrganizations: { nodes: [] },
+        }
+        
+        // Immediately emit the spoofed auth status
+        this.status.next(spoofedAuthStatus)
+        this.hasAuthed = true
 
         const credentialsChangesNeedingValidation = resolvedConfig.pipe(
             withLatestFrom(this.lastValidatedAndStoredCredentials.pipe(startWith(null))),
@@ -102,48 +145,45 @@ class AuthProvider implements vscode.Disposable {
             distinctUntilChanged()
         )
 
-        this.subscriptions.push(
-            ClientConfigSingleton.getInstance()
-                .updates.pipe(
-                    abortableOperation(async (config, signal) => {
-                        const nextAuthStatus = await validateCredentials(
-                            await currentResolvedConfig(),
-                            signal,
-                            config
-                        )
-                        // The only case where client config impacts the auth status is when the user is
-                        // logged into dotcom but the client config is set to use an enterprise instance
-                        // we explicitly check for this error and only update if so
-                        if (
-                            !nextAuthStatus.authenticated &&
-                            isEnterpriseUserDotComError(nextAuthStatus.error)
-                        ) {
-                            this.status.next(nextAuthStatus)
-                        }
-                    })
-                )
-                .subscribe({})
-        )
+        // BYPASS: Skip client config updates that might interfere with spoofed auth
+        // Original client config subscription commented out:
+        // this.subscriptions.push(
+        //     ClientConfigSingleton.getInstance()
+        //         .updates.pipe(
+        //             abortableOperation(async (config, signal) => {
+        //                 const nextAuthStatus = await validateCredentials(
+        //                     await currentResolvedConfig(),
+        //                     signal,
+        //                     config
+        //                 )
+        //                 if (
+        //                     !nextAuthStatus.authenticated &&
+        //                     isEnterpriseUserDotComError(nextAuthStatus.error)
+        //                 ) {
+        //                     this.status.next(nextAuthStatus)
+        //                 }
+        //             })
+        //         )
+        //         .subscribe({})
+        // )
 
-        // Perform auth as config changes.
-        this.subscriptions.push(
-            combineLatest(
-                credentialsChangesNeedingValidation,
-                this.refreshRequests.pipe(startWith(true))
-            )
-                .pipe(
-                    abortableOperation(async ([config, resetInitialAuthStatus], signal) => {
-                        if (getClientCapabilities().isCodyWeb) {
-                            // Cody Web calls {@link AuthProvider.validateAndStoreCredentials}
-                            // explicitly. This early exit prevents duplicate authentications during
-                            // the initial load.
-                            return
-                        }
-                        await this.validateAndUpdateAuthStatus(config, signal, resetInitialAuthStatus)
-                    })
-                )
-                .subscribe({})
-        )
+        // BYPASS: Skip the normal auth flow - we're always authenticated
+        // Original auth flow commented out:
+        // this.subscriptions.push(
+        //     combineLatest(
+        //         credentialsChangesNeedingValidation,
+        //         this.refreshRequests.pipe(startWith(true))
+        //     )
+        //         .pipe(
+        //             abortableOperation(async ([config, resetInitialAuthStatus], signal) => {
+        //                 if (getClientCapabilities().isCodyWeb) {
+        //                     return
+        //                 }
+        //                 await this.validateAndUpdateAuthStatus(config, signal, resetInitialAuthStatus)
+        //             })
+        //         )
+        //         .subscribe({})
+        // )
 
         // Try to reauthenticate periodically when the authentication failed due to an availability
         // error (which is ephemeral and the underlying error condition may no longer exist).
@@ -229,8 +269,30 @@ class AuthProvider implements vscode.Disposable {
      * Refresh the auth status.
      */
     public refresh(resetInitialAuthStatus = true): void {
-        this.lastValidatedAndStoredCredentials.next(null)
-        this.refreshRequests.next(resetInitialAuthStatus)
+        // BYPASS: Always maintain spoofed authentication status
+        const spoofedAuthStatus = {
+            authenticated: true,
+            endpoint: DOTCOM_URL.toString(),
+            pendingValidation: false,
+            username: 'spoofed-user',
+            displayName: 'Spoofed Pro User',
+            avatarURL: '',
+            primaryEmail: { email: 'spoofed@example.com', verified: true },
+            hasVerifiedEmail: true,
+            siteRole: 'USER' as const,
+            siteVersion: '6.0.0',
+            codyApiVersion: 1,
+            configOverwrites: {},
+            userCanUpgrade: false,
+            isDotCom: true,
+            isFireworksTracingEnabled: false,
+            userOrganizations: { nodes: [] },
+        }
+        this.status.next(spoofedAuthStatus)
+        
+        // Original refresh logic commented out:
+        // this.lastValidatedAndStoredCredentials.next(null)
+        // this.refreshRequests.next(resetInitialAuthStatus)
     }
 
     public signout(endpoint: string): void {

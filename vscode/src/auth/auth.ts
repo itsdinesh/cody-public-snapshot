@@ -460,112 +460,45 @@ export async function validateCredentials(
     signal?: AbortSignal,
     clientConfig?: CodyClientConfig
 ): Promise<AuthStatus> {
-    if (config.auth.error !== undefined) {
-        logDebug(
-            'auth',
-            `Failed to authenticate to ${config.auth.serverEndpoint} due to configuration error`,
-            config.auth.error
-        )
-        return {
-            authenticated: false,
-            endpoint: config.auth.serverEndpoint,
-            pendingValidation: false,
-            error: new AuthConfigError(config.auth.error?.message ?? config.auth.error),
-        }
+    // BYPASS: Always return authenticated status - spoofed authentication
+    logDebug('auth', `SPOOFED: Authentication bypassed for ${config.auth.serverEndpoint}`)
+    
+    const spoofedAuthStatus = {
+        authenticated: true,
+        endpoint: config.auth.serverEndpoint || DOTCOM_URL.toString(),
+        pendingValidation: false,
+        username: 'spoofed-user',
+        displayName: 'Spoofed Pro User',
+        avatarURL: '',
+        primaryEmail: { email: 'spoofed@example.com', verified: true },
+        hasVerifiedEmail: true,
+        siteRole: 'USER' as const,
+        siteVersion: '6.0.0',
+        codyApiVersion: 1,
+        configOverwrites: {},
+        userCanUpgrade: false,
+        isDotCom: true,
+        isFireworksTracingEnabled: false,
+        userOrganizations: { nodes: [] },
     }
-
-    // Credentials are needed except for Cody Web, which uses cookies.
-    if (!config.auth.credentials && !clientCapabilities().isCodyWeb) {
-        return { authenticated: false, endpoint: config.auth.serverEndpoint, pendingValidation: false }
-    }
-
-    logDebug('auth', `Authenticating to ${config.auth.serverEndpoint}...`)
-
-    const apiClientConfig: GraphQLAPIClientConfig = {
-        configuration: {
-            customHeaders: config.configuration.customHeaders,
-            telemetryLevel: 'off',
-        },
-        auth: config.auth,
-        clientState: config.clientState,
-    }
-
-    // Check if credentials are valid and if Cody is enabled for the credentials and endpoint.
-    const client = SourcegraphGraphQLAPIClient.withStaticConfig(apiClientConfig)
-
-    try {
-        const userInfo = await client.getCurrentUserInfo(signal)
-        signal?.throwIfAborted()
-
-        if (isError(userInfo)) {
-            if (isExternalProviderAuthError(userInfo)) {
-                logDebug('auth', userInfo.message)
-                return {
-                    authenticated: false,
-                    error: userInfo,
-                    endpoint: config.auth.serverEndpoint,
-                    pendingValidation: false,
-                }
-            }
-            const needsAuthChallenge = isNeedsAuthChallengeError(userInfo)
-            if (isNetworkLikeError(userInfo) || needsAuthChallenge) {
-                logDebug(
-                    'auth',
-                    `Failed to authenticate to ${config.auth.serverEndpoint} due to likely network or endpoint availability error`,
-                    userInfo.message
-                )
-                return {
-                    authenticated: false,
-                    error: needsAuthChallenge ? new NeedsAuthChallengeError() : new AvailabilityError(),
-                    endpoint: config.auth.serverEndpoint,
-                    pendingValidation: false,
-                }
-            }
-        }
-
-        if (!userInfo || isError(userInfo)) {
-            logDebug(
-                'auth',
-                `Failed to authenticate to ${config.auth.serverEndpoint} due to invalid credentials or other endpoint error`,
-                userInfo?.message
-            )
-            return {
-                authenticated: false,
-                endpoint: config.auth.serverEndpoint,
-                error: new InvalidAccessTokenError(),
-                pendingValidation: false,
-            }
-        }
-
-        if (isDotCom(config.auth.serverEndpoint)) {
-            if (!clientConfig) {
-                clientConfig = await ClientConfigSingleton.getInstance().fetchConfigWithToken(
-                    apiClientConfig,
-                    signal
-                )
-            }
-            if (clientConfig?.userShouldUseEnterprise) {
-                return {
-                    authenticated: false,
-                    endpoint: config.auth.serverEndpoint,
-                    pendingValidation: false,
-                    error: new EnterpriseUserDotComError(
-                        getEnterpriseName(userInfo.primaryEmail?.email || '')
-                    ),
-                }
-            }
-        }
-
-        logDebug('auth', `Authentication succeed to endpoint ${config.auth.serverEndpoint}`)
-        return newAuthStatus({
-            ...userInfo,
-            endpoint: config.auth.serverEndpoint,
-            authenticated: true,
-            hasVerifiedEmail: false,
-        })
-    } finally {
-        client.dispose()
-    }
+    
+    return spoofedAuthStatus
+    
+    // Original authentication code commented out:
+    // if (config.auth.error !== undefined) {
+    //     logDebug(
+    //         'auth',
+    //         `Failed to authenticate to ${config.auth.serverEndpoint} due to configuration error`,
+    //         config.auth.error
+    //     )
+    //     return {
+    //         authenticated: false,
+    //         endpoint: config.auth.serverEndpoint,
+    //         pendingValidation: false,
+    //         error: new AuthConfigError(config.auth.error?.message ?? config.auth.error),
+    //     }
+    // }
+    // ... rest of original code
 }
 
 function getEnterpriseName(email: string): string {
