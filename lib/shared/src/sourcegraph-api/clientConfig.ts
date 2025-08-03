@@ -1,6 +1,4 @@
 import { Observable } from 'observable-fns'
-import semver from 'semver'
-import { logDebug, logError } from '../logger'
 import {
     distinctUntilChanged,
     filter,
@@ -8,10 +6,7 @@ import {
 import {
     pendingOperation,
 } from '../misc/observableOperation'
-import { isError } from '../utils'
-import { isAbortError } from './errors'
-import { type CodyConfigFeatures, type GraphQLAPIClientConfig, graphqlClient } from './graphql/client'
-import { setLatestCodyAPIVersion } from './siteVersion'
+import { type GraphQLAPIClientConfig } from './graphql/client'
 
 export interface CodyNotice {
     key: string
@@ -103,14 +98,7 @@ export class ClientConfigSingleton {
         ? Number.parseInt(process.env.CODY_CLIENT_CONFIG_SINGLETON_REFETCH_INTERVAL, 10)
         : 60 * 1000
 
-    // Default values for the legacy GraphQL features API, used when a Sourcegraph instance
-    // does not support even the legacy GraphQL API.
-    private readonly featuresLegacy: Readonly<CodyConfigFeatures> = {
-        chat: true,
-        autoComplete: true,
-        commands: true,
-        attribution: false,
-    }
+    // BYPASS: Removed featuresLegacy since we're using spoofed config
 
     /**
      * An observable that immediately emits the last-cached value (or fetches it if needed) and then
