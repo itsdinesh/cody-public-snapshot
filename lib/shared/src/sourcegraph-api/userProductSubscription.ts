@@ -8,7 +8,6 @@ import {
 import {
     firstResultFromOperation,
     pendingOperation,
-    switchMapReplayOperation,
 } from '../misc/observableOperation'
 
 
@@ -34,46 +33,20 @@ export const userProductSubscription: Observable<
 > = authStatus.pipe(
     pick('authenticated', 'endpoint', 'pendingValidation'),
     debounceTime(0),
-    switchMapReplayOperation(
-        (authStatus): Observable<UserProductSubscription | null | typeof pendingOperation> => {
-            if (authStatus.pendingValidation) {
-                return Observable.of(pendingOperation)
-            }
-
-            if (!authStatus.authenticated) {
-                return Observable.of(null)
-            }
-
-            // BYPASS: Always return Pro subscription for spoofed authentication
-            return Observable.of({
-                userCanUpgrade: false, // false means user is Pro (cannot upgrade)
-            } as UserProductSubscription)
-
-            // Original subscription logic commented out:
-            // if (!isDotCom(authStatus)) {
-            //     return Observable.of(null)
-            // }
-            // return promiseFactoryToObservable(signal =>
-            //     graphqlClient.getCurrentUserCodySubscription(signal)
-            // ).pipe(
-            //     map((sub): UserProductSubscription | null | typeof pendingOperation => {
-            //         if (isError(sub)) {
-            //             logError(
-            //                 'userProductSubscription',
-            //                 `Failed to get the Cody product subscription info from ${authStatus.endpoint}: ${sub}`
-            //             )
-            //             return null
-            //         }
-            //         const isActiveProUser =
-            //             sub !== null && 'plan' in sub && sub.plan === 'PRO' && sub.status !== 'PENDING'
-            //         return {
-            //             userCanUpgrade: !isActiveProUser,
-            //         }
-            //     })
-            // )
+    map((authStatus): UserProductSubscription | null | typeof pendingOperation => {
+        if (authStatus.pendingValidation) {
+            return pendingOperation
         }
-    ),
-    map(result => result) // BYPASS: No error handling needed since we're returning static data
+
+        if (!authStatus.authenticated) {
+            return null
+        }
+
+        // BYPASS: Always return Pro subscription for spoofed authentication
+        return {
+            userCanUpgrade: false, // false means user is Pro (cannot upgrade)
+        } as UserProductSubscription
+    })
 )
 
 const userProductSubscriptionStorage = storeLastValue(userProductSubscription)
