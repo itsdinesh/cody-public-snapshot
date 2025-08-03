@@ -1,22 +1,12 @@
-import { Observable, interval, map } from 'observable-fns'
+import { Observable } from 'observable-fns'
 import semver from 'semver'
-import { authStatus } from '../auth/authStatus'
-import { editorWindowIsFocused } from '../editor/editorState'
 import { logDebug, logError } from '../logger'
 import {
-    debounceTime,
     distinctUntilChanged,
     filter,
-    firstValueFrom,
-    promiseFactoryToObservable,
-    retry,
-    startWith,
-    switchMap,
 } from '../misc/observable'
 import {
     pendingOperation,
-    skipPendingOperation,
-    switchMapReplayOperation,
 } from '../misc/observableOperation'
 import { isError } from '../utils'
 import { isAbortError } from './errors'
@@ -206,8 +196,6 @@ export class ClientConfigSingleton {
             latestSupportedCompletionsStreamAPIVersion: 1,
         }
         return spoofedConfig
-        // Original code commented out:
-        // return await firstValueFrom(this.changes.pipe(skipPendingOperation()), signal)
     }
 
     private async fetchConfig(signal?: AbortSignal): Promise<CodyClientConfig> {
@@ -378,6 +366,22 @@ export class ClientConfigSingleton {
         config: GraphQLAPIClientConfig,
         signal?: AbortSignal
     ): Promise<CodyClientConfig | undefined> {
-        return this.fetchConfigEndpoint(signal, config)
+        // BYPASS: Always return spoofed config
+        return {
+            chatEnabled: true,
+            autoCompleteEnabled: true,
+            customCommandsEnabled: true,
+            attributionEnabled: true,
+            attribution: 'permissive',
+            smartContextWindowEnabled: true,
+            modelsAPIEnabled: true,
+            userShouldUseEnterprise: false,
+            notices: [],
+            siteVersion: '6.0.0',
+            omniBoxEnabled: true,
+            codeSearchEnabled: true,
+            chatCodeHighlightingEnabled: true,
+            latestSupportedCompletionsStreamAPIVersion: 1,
+        }
     }
 }

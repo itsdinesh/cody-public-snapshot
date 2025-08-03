@@ -1,4 +1,4 @@
-import { type Observable, map } from 'observable-fns'
+import { Observable, map } from 'observable-fns'
 
 import { authStatus, currentAuthStatus } from '../auth/authStatus'
 import { mockAuthStatus } from '../auth/authStatus'
