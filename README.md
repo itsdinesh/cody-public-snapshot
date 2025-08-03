@@ -1,8 +1,11 @@
 > [!NOTE]
-> Cody transitioned to a private repo. This repository, `sourcegraph/cody-public-snapshot` is a publicly available copy of the `sourcegraph/cody` repository as it was just before the migration.
+> **Personal Community Version**: This is a personal maintained version of the Cody extension with authentication bypass modifications. This version allows you to use Cody's features without requiring Sourcegraph authentication by configuring your own AI models.
+
+> [!IMPORTANT]
+> This is NOT an official Sourcegraph release. The original Cody repository transitioned to private. This repository, `sourcegraph/cody-public-snapshot` was a publicly available copy of the `sourcegraph/cody` repository as it was just before the migration, now modified for community use.
 
 > [!TIP]
-> If you are interested in working with the code, this [commit](https://github.com/sourcegraph/cody-public-snapshot/commit/d7fc6741e7893e3f6e29efe58043f1afe08d505f) is the last one made under an Apache License.
+> If you are interested in the original code, this [commit](https://github.com/sourcegraph/cody-public-snapshot/commit/d7fc6741e7893e3f6e29efe58043f1afe08d505f) is the last one made under an Apache License.
 
 ---
 
@@ -25,12 +28,24 @@ Cody is an AI coding agent that uses the latest LLMs and codebase context to hel
 
 ## Get started
 
-[⭐ **Install Cody from the VS Code Marketplace**](https://marketplace.visualstudio.com/items?itemName=sourcegraph.cody-ai) or the [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/9682-cody-ai-by-sourcegraph), then check out the [demo](#demo) to see what you can do.
+**This community version requires configuring your own AI models and can be installed in two ways:**
 
-_&mdash; or &mdash;_
+### Option 1: Download Pre-built Release (Recommended)
+1. **Download the latest `.vsix` file** from [GitHub Releases](../../releases)
+2. **Install in VS Code**: 
+   - Open VS Code
+   - Press `Ctrl/Cmd + Shift + P` 
+   - Type "Extensions: Install from VSIX"
+   - Select the downloaded `.vsix` file
+3. **Configure your models** (see [Model Configuration](#model-configuration) below)
 
-- Build and run the VS Code extension locally: `pnpm install && cd vscode && pnpm run dev`
-- See [all supported editors](https://sourcegraph.com/docs/cody/clients)
+### Option 2: Build from Source
+1. **Build the extension**: `pnpm install && cd vscode && pnpm run dev`
+2. **Configure your models** (see [Model Configuration](#model-configuration) below)
+3. **Install the built extension** in VS Code from the generated `.vsix` file
+
+> [!WARNING]
+> This version does NOT work with the official marketplace versions. You must install it manually using one of the methods above.
 
 ## What is Cody?
 
@@ -42,12 +57,68 @@ See [cody.dev](https://about.sourcegraph.com/cody?utm_source=github.com&utm_medi
 
 ## What can Cody do?
 
-- **Chat:** Ask Cody questions about your codebase. Cody will use semantic search to retrieve files from your codebase and use context from those files to answer your questions. You can @-mention files to target specific context, and you can also add remote repositories as context on Cody Enterprise.
-- **Autocomplete:** Cody makes single-line and multi-line suggestions as you type, speeding up your coding and shortcutting the need for you to hunt down function and variable names as you type.
-- **Inline Edit:** Ask Cody to fix or refactor code from anywhere in a file.
+- **Chat:** Ask Cody questions about your codebase using your configured AI models
+- **Autocomplete:** Single-line and multi-line code suggestions as you type
+- **Inline Edit (Alt+K):** Fix or refactor code from anywhere in a file
 - **Prompts:** Cody has quick, customizable prompts for common actions. Simply highlight a code snippet and run a prompt, like “Document code,” “Explain code,” or “Generate Unit Tests.”
-- **Swappable LLMs:** Support for Anthropic Claude Sonnet 4, OpenAI GPT-4o, Mixtral, Gemini 1.5, and more.
-  - **Free LLM usage included** Cody Free gives you access to Anthropic Claude Sonnet 4 and other models. It's available for individual devs on both personal and work code, subject to reasonable per-user rate limits ([more info](#usage)).
+- **Custom Models:** Configure your own AI models with API keys (OpenAI, Anthropic, Google, etc.)
+
+## Model Configuration
+
+**This community version requires you to configure your own AI models.** Add your models to VS Code settings:
+
+### Option 1: VS Code Settings UI
+1. Open VS Code Settings (`Ctrl/Cmd + ,`)
+2. Search for `cody.dev.models`
+3. Click "Edit in settings.json"
+
+### Option 2: Direct settings.json
+Add to your VS Code `settings.json`:
+
+```json
+{
+  "cody.dev.models": [
+    {
+      "provider": "openai",
+      "model": "gpt-4o",
+      "title": "GPT-4o",
+      "apiKey": "your-openai-api-key",
+      "apiEndpoint": "https://api.openai.com/v1"
+    },
+    {
+      "provider": "anthropic", 
+      "model": "claude-3-5-sonnet-20241022",
+      "title": "Claude 3.5 Sonnet",
+      "apiKey": "your-anthropic-api-key",
+      "apiEndpoint": "https://api.anthropic.com"
+    },
+    {
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "title": "Google Gemini 2.5 Flash", 
+      "apiKey": "your-google-api-key",
+      "apiEndpoint": "https://generativelanguage.googleapis.com/v1beta"
+    }
+  ]
+}
+```
+
+### Configuration Options:
+- `provider`: Model provider (openai, anthropic, google, etc.)
+- `model`: Model identifier 
+- `title`: Display name in the UI (optional, defaults to model ID)
+- `apiKey`: Your API key for the provider
+- `apiEndpoint`: API endpoint URL
+- `inputTokens`: Max input tokens (optional)
+- `outputTokens`: Max output tokens (optional)
+
+### Getting API Keys:
+- **OpenAI**: [platform.openai.com](https://platform.openai.com/api-keys)
+- **Anthropic**: [console.anthropic.com](https://console.anthropic.com/)
+- **Google**: [aistudio.google.com](https://aistudio.google.com/app/apikey)
+
+> [!TIP]
+> If no models are configured, a default Claude 3.5 Sonnet model will be available (but won't work without proper API access).
 
 ## Demo
 
@@ -76,17 +147,24 @@ Cody is often magical and sometimes frustratingly wrong. Cody's goal is to be po
 
 ## Usage
 
-### Individual usage
+### Community Version Usage
 
-Individual usage of Cody currently requires a (free) [Sourcegraph.com](https://sourcegraph.com/?utm_source=github.com&utm_medium=referral) account because we need to prevent abuse of the free Anthropic/OpenAI LLM usage. We're working on supporting [more swappable LLM options](https://sourcegraph.com/docs/cody/faq#can-i-use-my-own-api-keys) (including using your own Anthropic/OpenAI account or a self-hosted LLM) to make it possible to use Cody without any required third-party dependencies.
+This community version works completely offline with your own API keys:
 
-### Codying at work
+- **No Sourcegraph account required** - Authentication is bypassed
+- **Bring your own models** - Configure any AI provider you have access to
+- **Local operation** - No data sent to Sourcegraph servers
+- **Full feature access** - All Cody features work with your configured models
 
-You can use Cody Free or Cody Pro when Codying on your work code. If that doesn't meet your needs (because you need a dedicated/single-tenant instance, audit logs, bring-your-own-model etc.), upgrade to [Cody Enterprise](https://sourcegraph.com/pricing).
+### API Costs
 
-### Existing Sourcegraph customers
+Since you're using your own API keys, you'll be charged directly by the AI providers:
+- **OpenAI**: Pay-per-use pricing for GPT models
+- **Anthropic**: Pay-per-use pricing for Claude models  
+- **Google**: Free tier available, then pay-per-use for Gemini models
 
-The Cody editor extensions work with:
+### Official Cody
 
-- Sourcegraph Cloud
-- Sourcegraph Enterprise Server (self-hosted) instances on version 5.1 or later
+For the official Sourcegraph-hosted version with free usage tiers, visit:
+- [Sourcegraph.com](https://sourcegraph.com/cody) for Cody Free/Pro
+- [Cody Enterprise](https://sourcegraph.com/pricing) for business features
