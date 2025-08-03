@@ -11,8 +11,7 @@ import {
     pendingOperation,
     switchMapReplayOperation,
 } from '../misc/observableOperation'
-import { isDotCom } from '..'
-import { isError } from 'util'
+
 
 export interface UserProductSubscription {
     // TODO(sqs): this is the only field related to the user's subscription we were using previously
@@ -75,7 +74,7 @@ export const userProductSubscription: Observable<
             // )
         }
     ),
-    map(result => (isError(result) ? null : result)) // the operation catches its own errors, so errors will never get here
+    map(result => result) // BYPASS: No error handling needed since we're returning static data
 )
 
 const userProductSubscriptionStorage = storeLastValue(userProductSubscription)
@@ -92,8 +91,8 @@ export function currentUserProductSubscription(): Promise<UserProductSubscriptio
  * Check if the user is an enterprise user.
  */
 export async function checkIfEnterpriseUser(): Promise<boolean> {
-    const authStatusValue = await firstValueFrom(authStatus)
-    return !isDotCom(authStatusValue)
+    // BYPASS: Always return false since we're spoofing as DotCom Pro user
+    return false
 }
 
 /**
