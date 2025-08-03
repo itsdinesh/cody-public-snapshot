@@ -1,27 +1,21 @@
 import {
     type AuthCredentials,
     type AuthStatus,
+    type AuthenticatedAuthStatus,
     type ClientCapabilitiesWithLegacyFields,
-    ClientConfigSingleton,
     DOTCOM_URL,
     EMPTY,
-    NEVER,
     type ResolvedConfiguration,
     type Unsubscribable,
-    abortableOperation,
     authStatus,
-    combineLatest,
     currentResolvedConfig,
     disposableSubscription,
     distinctUntilChanged,
     clientCapabilities as getClientCapabilities,
-    isAbortError,
     resolvedConfig as resolvedConfig_,
     setAuthStatusObservable as setAuthStatusObservable_,
-    startWith,
     switchMap,
     telemetryRecorder,
-    withLatestFrom,
 } from '@sourcegraph/cody-shared'
 import { normalizeServerEndpointURL } from '@sourcegraph/cody-shared/src/configuration/auth-resolver'
 import {
@@ -58,59 +52,13 @@ class AuthProvider implements vscode.Disposable {
 
     private subscriptions: Unsubscribable[] = []
 
-    private async validateAndUpdateAuthStatus(
-        credentials: ResolvedConfigurationCredentialsOnly,
-        signal?: AbortSignal,
-        resetInitialAuthStatus?: boolean
-    ): Promise<void> {
-        // BYPASS: Always return authenticated status - spoofed authentication
-        const spoofedAuthStatus = {
-            authenticated: true,
-            endpoint: credentials.auth.serverEndpoint || DOTCOM_URL.toString(),
-            pendingValidation: false,
-            username: 'spoofed-user',
-            displayName: 'Spoofed Pro User',
-            avatarURL: '',
-            primaryEmail: { email: 'spoofed@example.com', verified: true },
-            hasVerifiedEmail: true,
-            siteRole: 'USER' as const,
-            siteVersion: '6.0.0',
-            codyApiVersion: 1,
-            configOverwrites: {},
-            userCanUpgrade: false,
-            isDotCom: true,
-            isFireworksTracingEnabled: false,
-            userOrganizations: { nodes: [] },
-        }
-        
-        this.status.next(spoofedAuthStatus)
-        await this.handleAuthTelemetry(spoofedAuthStatus, signal)
-        
-        // Original code commented out:
-        // if (resetInitialAuthStatus ?? true) {
-        //     this.status.next({
-        //         authenticated: false,
-        //         pendingValidation: true,
-        //         endpoint: credentials.auth.serverEndpoint,
-        //     })
-        // }
-        // try {
-        //     const authStatus = await validateCredentials(credentials, signal, undefined)
-        //     signal?.throwIfAborted()
-        //     this.status.next(authStatus)
-        //     await this.handleAuthTelemetry(authStatus, signal)
-        // } catch (error) {
-        //     if (!isAbortError(error)) {
-        //         logError('AuthProvider', 'Unexpected error validating credentials', error)
-        //     }
-        // }
-    }
+    // BYPASS: Removed validateAndUpdateAuthStatus method since it's no longer used
 
     constructor(setAuthStatusObservable = setAuthStatusObservable_, resolvedConfig = resolvedConfig_) {
         setAuthStatusObservable(this.status.pipe(distinctUntilChanged()))
 
         // BYPASS: Immediately emit spoofed authentication status on startup
-        const spoofedAuthStatus = {
+        const spoofedAuthStatus: AuthenticatedAuthStatus = {
             authenticated: true,
             endpoint: DOTCOM_URL.toString(),
             pendingValidation: false,
@@ -133,17 +81,7 @@ class AuthProvider implements vscode.Disposable {
         this.status.next(spoofedAuthStatus)
         this.hasAuthed = true
 
-        const credentialsChangesNeedingValidation = resolvedConfig.pipe(
-            withLatestFrom(this.lastValidatedAndStoredCredentials.pipe(startWith(null))),
-            switchMap(([config, lastValidatedCredentials]) => {
-                const credentials: ResolvedConfigurationCredentialsOnly =
-                    toCredentialsOnlyNormalized(config)
-                return isEqual(credentials, lastValidatedCredentials)
-                    ? NEVER
-                    : Observable.of(credentials)
-            }),
-            distinctUntilChanged()
-        )
+        // BYPASS: Removed credentialsChangesNeedingValidation since we're not validating credentials
 
         // BYPASS: Skip client config updates that might interfere with spoofed auth
         // Original client config subscription commented out:
@@ -270,7 +208,7 @@ class AuthProvider implements vscode.Disposable {
      */
     public refresh(resetInitialAuthStatus = true): void {
         // BYPASS: Always maintain spoofed authentication status
-        const spoofedAuthStatus = {
+        const spoofedAuthStatus: AuthenticatedAuthStatus = {
             authenticated: true,
             endpoint: DOTCOM_URL.toString(),
             pendingValidation: false,

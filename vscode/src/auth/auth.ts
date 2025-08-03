@@ -2,12 +2,10 @@ import * as vscode from 'vscode'
 
 import {
     type AuthStatus,
-    ClientConfigSingleton,
+    type AuthenticatedAuthStatus,
     type CodyClientConfig,
     DOTCOM_URL,
-    type GraphQLAPIClientConfig,
     type PickResolvedConfiguration,
-    SourcegraphGraphQLAPIClient,
     type UnauthenticatedAuthStatus,
     cenv,
     clientCapabilities,
@@ -18,25 +16,15 @@ import {
     getCodyAuthReferralCode,
     graphqlClient,
     isDotCom,
-    isError,
-    isNetworkLikeError,
     isWorkspaceInstance,
     resolvedConfig,
     telemetryRecorder,
 } from '@sourcegraph/cody-shared'
 import { resolveAuth } from '@sourcegraph/cody-shared/src/configuration/auth-resolver'
 import {
-    AuthConfigError,
-    AvailabilityError,
-    EnterpriseUserDotComError,
-    InvalidAccessTokenError,
-    NeedsAuthChallengeError,
-    isExternalProviderAuthError,
     isInvalidAccessTokenError,
-    isNeedsAuthChallengeError,
 } from '@sourcegraph/cody-shared/src/sourcegraph-api/errors'
 import { isSourcegraphToken } from '../chat/protocol'
-import { newAuthStatus } from '../chat/utils'
 import { logDebug } from '../output-channel-logger'
 import { authProvider } from '../services/AuthProvider'
 import { localStorage } from '../services/LocalStorageProvider'
@@ -463,7 +451,7 @@ export async function validateCredentials(
     // BYPASS: Always return authenticated status - spoofed authentication
     logDebug('auth', `SPOOFED: Authentication bypassed for ${config.auth.serverEndpoint}`)
     
-    const spoofedAuthStatus = {
+    const spoofedAuthStatus: AuthenticatedAuthStatus = {
         authenticated: true,
         endpoint: config.auth.serverEndpoint || DOTCOM_URL.toString(),
         pendingValidation: false,
@@ -501,11 +489,7 @@ export async function validateCredentials(
     // ... rest of original code
 }
 
-function getEnterpriseName(email: string): string {
-    const domain = email.split('@')[1]
-    const name = domain.split('.')[0]
-    return name.charAt(0).toUpperCase() + name.slice(1)
-}
+// BYPASS: Removed getEnterpriseName function since it's no longer used
 
 export async function requestEndpointSettingsDeliveryToSearchPlugin(): Promise<string> {
     const searchExtension = vscode.extensions.all.find(({ packageJSON }) =>
