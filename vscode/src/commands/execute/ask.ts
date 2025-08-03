@@ -1,5 +1,4 @@
 import {
-    ClientConfigSingleton,
     type DefaultChatCommands,
     type EventSource,
     type PromptString,

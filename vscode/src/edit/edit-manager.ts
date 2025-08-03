@@ -2,7 +2,6 @@ import * as vscode from 'vscode'
 
 import {
     type ChatClient,
-    ClientConfigSingleton,
     DEFAULT_EVENT_SOURCE,
     type EditModel,
     type EventSource,

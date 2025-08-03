@@ -458,7 +458,7 @@ export async function validateCredentials(
         username: 'spoofed-user',
         displayName: 'Spoofed Pro User',
         avatarURL: '',
-        primaryEmail: { email: 'spoofed@example.com', verified: true },
+        primaryEmail: 'spoofed@example.com',
         hasVerifiedEmail: true,
         siteRole: 'USER' as const,
         siteVersion: '6.0.0',

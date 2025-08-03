@@ -20,12 +20,10 @@ import {
 import { normalizeServerEndpointURL } from '@sourcegraph/cody-shared/src/configuration/auth-resolver'
 import {
     isAvailabilityError,
-    isEnterpriseUserDotComError,
     isInvalidAccessTokenError,
     isNeedsAuthChallengeError,
 } from '@sourcegraph/cody-shared/src/sourcegraph-api/errors'
-import isEqual from 'lodash/isEqual'
-import { Observable, Subject, interval } from 'observable-fns'
+import { Subject, interval } from 'observable-fns'
 import * as vscode from 'vscode'
 import { serializeConfigSnapshot } from '../../uninstall/serializeConfig'
 import { type ResolvedConfigurationCredentialsOnly, validateCredentials } from '../auth/auth'
@@ -65,7 +63,7 @@ class AuthProvider implements vscode.Disposable {
             username: 'spoofed-user',
             displayName: 'Spoofed Pro User',
             avatarURL: '',
-            primaryEmail: { email: 'spoofed@example.com', verified: true },
+            primaryEmail: 'spoofed@example.com',
             hasVerifiedEmail: true,
             siteRole: 'USER' as const,
             siteVersion: '6.0.0',
@@ -215,7 +213,7 @@ class AuthProvider implements vscode.Disposable {
             username: 'spoofed-user',
             displayName: 'Spoofed Pro User',
             avatarURL: '',
-            primaryEmail: { email: 'spoofed@example.com', verified: true },
+            primaryEmail: 'spoofed@example.com',
             hasVerifiedEmail: true,
             siteRole: 'USER' as const,
             siteVersion: '6.0.0',

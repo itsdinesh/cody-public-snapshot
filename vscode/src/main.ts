@@ -4,7 +4,6 @@ import * as vscode from 'vscode'
 
 import {
     type ChatClient,
-    ClientConfigSingleton,
     type ConfigurationInput,
     DOTCOM_URL,
     type DefaultCodyCommands,
