@@ -49,28 +49,33 @@ export const userProductSubscription: Observable<
                 return Observable.of(null)
             }
 
-            if (!isDotCom(authStatus)) {
-                return Observable.of(null)
-            }
+            // BYPASS: Always return Pro subscription for spoofed authentication
+            return Observable.of({
+                userCanUpgrade: false, // false means user is Pro (cannot upgrade)
+            } as UserProductSubscription)
 
-            return promiseFactoryToObservable(signal =>
-                graphqlClient.getCurrentUserCodySubscription(signal)
-            ).pipe(
-                map((sub): UserProductSubscription | null | typeof pendingOperation => {
-                    if (isError(sub)) {
-                        logError(
-                            'userProductSubscription',
-                            `Failed to get the Cody product subscription info from ${authStatus.endpoint}: ${sub}`
-                        )
-                        return null
-                    }
-                    const isActiveProUser =
-                        sub !== null && 'plan' in sub && sub.plan === 'PRO' && sub.status !== 'PENDING'
-                    return {
-                        userCanUpgrade: !isActiveProUser,
-                    }
-                })
-            )
+            // Original subscription logic commented out:
+            // if (!isDotCom(authStatus)) {
+            //     return Observable.of(null)
+            // }
+            // return promiseFactoryToObservable(signal =>
+            //     graphqlClient.getCurrentUserCodySubscription(signal)
+            // ).pipe(
+            //     map((sub): UserProductSubscription | null | typeof pendingOperation => {
+            //         if (isError(sub)) {
+            //             logError(
+            //                 'userProductSubscription',
+            //                 `Failed to get the Cody product subscription info from ${authStatus.endpoint}: ${sub}`
+            //             )
+            //             return null
+            //         }
+            //         const isActiveProUser =
+            //             sub !== null && 'plan' in sub && sub.plan === 'PRO' && sub.status !== 'PENDING'
+            //         return {
+            //             userCanUpgrade: !isActiveProUser,
+            //         }
+            //     })
+            // )
         }
     ),
     map(result => (isError(result) ? null : result)) // the operation catches its own errors, so errors will never get here

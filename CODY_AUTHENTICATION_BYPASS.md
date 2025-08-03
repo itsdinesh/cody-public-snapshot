@@ -74,6 +74,15 @@ The Cody extension has been modified to:
   - Modified `getDefaultChatModel()` to return the same model
 - **Effect**: Ensures edit functionality has a model to work with
 
+### 9. `lib/shared/src/sourcegraph-api/userProductSubscription.ts`
+- **Purpose**: Always return Pro user subscription status
+- **Change**: Modified `userProductSubscription` observable to return `{ userCanUpgrade: false }`
+- **Effect**: 
+  - User appears as Cody Pro instead of Free
+  - `userCanUpgrade: false` indicates Pro status (cannot upgrade further)
+  - Enables Pro-only features and removes upgrade prompts
+  - Works with `isCodyProUser()` function that checks `!sub.userCanUpgrade`
+
 ## How It Works
 
 1. **Immediate Authentication**: On extension startup, the AuthProvider immediately emits a spoofed authenticated status without any network requests or delays
