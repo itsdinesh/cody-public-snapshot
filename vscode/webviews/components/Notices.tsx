@@ -1,4 +1,4 @@
-import { CodyIDE, type CodyNotice, isWorkspaceInstance } from '@sourcegraph/cody-shared'
+import { CodyIDE, type CodyNotice } from '@sourcegraph/cody-shared'
 import { S2_URL } from '@sourcegraph/cody-shared/src/sourcegraph-api/environments'
 import {
     ArrowLeftRightIcon,
