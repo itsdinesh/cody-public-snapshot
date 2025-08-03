@@ -65,14 +65,8 @@ class AuthProvider implements vscode.Disposable {
             avatarURL: '',
             primaryEmail: 'spoofed@example.com',
             hasVerifiedEmail: true,
-            siteRole: 'USER' as const,
-            siteVersion: '6.0.0',
-            codyApiVersion: 1,
-            configOverwrites: {},
-            userCanUpgrade: false,
-            isDotCom: true,
             isFireworksTracingEnabled: false,
-            userOrganizations: { nodes: [] },
+            organizations: [],
         }
         
         // Immediately emit the spoofed auth status
@@ -215,14 +209,8 @@ class AuthProvider implements vscode.Disposable {
             avatarURL: '',
             primaryEmail: 'spoofed@example.com',
             hasVerifiedEmail: true,
-            siteRole: 'USER' as const,
-            siteVersion: '6.0.0',
-            codyApiVersion: 1,
-            configOverwrites: {},
-            userCanUpgrade: false,
-            isDotCom: true,
             isFireworksTracingEnabled: false,
-            userOrganizations: { nodes: [] },
+            organizations: [],
         }
         this.status.next(spoofedAuthStatus)
         

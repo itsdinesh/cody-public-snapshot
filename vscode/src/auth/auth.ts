@@ -460,14 +460,8 @@ export async function validateCredentials(
         avatarURL: '',
         primaryEmail: 'spoofed@example.com',
         hasVerifiedEmail: true,
-        siteRole: 'USER' as const,
-        siteVersion: '6.0.0',
-        codyApiVersion: 1,
-        configOverwrites: {},
-        userCanUpgrade: false,
-        isDotCom: true,
         isFireworksTracingEnabled: false,
-        userOrganizations: { nodes: [] },
+        organizations: [],
     }
     
     return spoofedAuthStatus
