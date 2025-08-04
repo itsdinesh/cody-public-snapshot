@@ -410,15 +410,20 @@ export function syncModels({
                                                     }
                                                 }
 
-                                                // NOTE: Calling `registerModelsFromVSCodeConfiguration()` doesn't
-                                                // entirely make sense in a world where LLM models are managed
-                                                // server-side. However, this is how Cody can be extended to use locally
-                                                // running LLMs such as Ollama (BYOK). (Though some more testing is needed.)
-                                                // See:
-                                                // https://sourcegraph.com/blog/local-code-completion-with-ollama-and-cody
-                                                data.primaryModels.push(
-                                                    ...getModelsFromVSCodeConfiguration(config)
-                                                )
+                                                // BYPASS: Always prioritize cody.dev.models when they exist
+                                                const devModels = getModelsFromVSCodeConfiguration(config)
+                                                if (config.configuration.devModels && config.configuration.devModels.length > 0) {
+                                                    // If cody.dev.models are configured, use them exclusively
+                                                    data.primaryModels = devModels
+                                                    // Set the first dev model as default for both chat and edit
+                                                    if (data.preferences && devModels.length > 0) {
+                                                        data.preferences.defaults.chat = devModels[0].id
+                                                        data.preferences.defaults.edit = devModels[0].id
+                                                    }
+                                                } else {
+                                                    // Otherwise, add dev models (including spoofed default) to server models
+                                                    data.primaryModels.push(...devModels)
+                                                }
 
                                                 data.primaryModels = data.primaryModels.map(model => {
                                                     if (
@@ -608,23 +613,24 @@ function getModelsFromVSCodeConfiguration({
         })
     ) ?? []
 
-    // BYPASS: Only add spoofed default model if no other models are configured
-    if (configModels.length === 0) {
-        const spoofedModel = createModel({
-            id: 'anthropic::2024-10-22::claude-3-5-sonnet-latest',
-            usage: [ModelUsage.Chat, ModelUsage.Edit],
-            contextWindow: {
-                input: CHAT_INPUT_TOKEN_BUDGET,
-                output: ANSWER_TOKENS,
-            },
-            tags: [ModelTag.Pro],
-            provider: 'anthropic',
-            title: 'Claude 3.5 Sonnet (Latest)',
-        })
-        return [spoofedModel]
+    // BYPASS: Always prioritize cody.dev.models when they exist, regardless of authentication status
+    if (configModels.length > 0) {
+        return configModels
     }
 
-    return configModels
+    // BYPASS: Only add spoofed default model if no cody.dev.models are configured
+    const spoofedModel = createModel({
+        id: 'anthropic::2024-10-22::claude-3-5-sonnet-latest',
+        usage: [ModelUsage.Chat, ModelUsage.Edit],
+        contextWindow: {
+            input: CHAT_INPUT_TOKEN_BUDGET,
+            output: ANSWER_TOKENS,
+        },
+        tags: [ModelTag.Pro],
+        provider: 'anthropic',
+        title: 'Claude 3.5 Sonnet (Latest)',
+    })
+    return [spoofedModel]
 }
 
 // fetchServerSideModels contacts the Sourcegraph endpoint, and fetches the LLM models it
