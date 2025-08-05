@@ -5,12 +5,11 @@ import {
     firstResultFromOperation,
     pendingOperation,
 } from '../misc/observableOperation'
-import { isError } from 'util'
 import { isDotCom } from '..'
 import { logError } from '../logger'
-import { isError } from 'util'
 import { graphqlClient } from './graphql'
 import { authStatus } from '..'
+import { isError } from '../utils'
 
 // @link latestSupportedCompletionsStreamAPIVersion
 // https://sourcegraph.sourcegraph.com/search?q=context:global+latestSupportedCompletionsStreamAPIVersion

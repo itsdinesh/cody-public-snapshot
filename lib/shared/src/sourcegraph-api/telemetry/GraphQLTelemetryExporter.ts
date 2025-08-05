@@ -8,14 +8,14 @@ import type { TelemetryEventInput, TelemetryExporter } from '@sourcegraph/teleme
  * event-logging mutations if the instance is older than 5.2.0.
  */
 export class GraphQLTelemetryExporter implements TelemetryExporter {
-    constructor(private readonly allowedDevEvents?: { feature: string; action: string }[]) {}
+    constructor(_allowedDevEvents?: { feature: string; action: string }[]) {}
 
 
 
     /**
      * BYPASS: Disable telemetry export to prevent network requests
      */
-    public async exportEvents(events: TelemetryEventInput[]): Promise<void> {
+    public async exportEvents(_events: TelemetryEventInput[]): Promise<void> {
         // Do nothing - telemetry disabled for spoofed authentication
         return
     }
