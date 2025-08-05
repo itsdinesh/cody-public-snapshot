@@ -1138,6 +1138,51 @@
           "markdownDescription": "Configuration for MCP servers to use with agentic chat. Enterprise instance with feature flag enabled required.",
           "default": {}
         },
+        "cody.dev.models": {
+          "type": "array",
+          "markdownDescription": "Custom models for development and testing. Configure your own API keys and endpoints for models not available through Sourcegraph.",
+          "default": [],
+          "items": {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "type": "string",
+                "description": "The model provider (e.g., openai, anthropic, google)"
+              },
+              "model": {
+                "type": "string", 
+                "description": "The model name (e.g., gpt-4, claude-3-sonnet)"
+              },
+              "title": {
+                "type": "string",
+                "description": "Optional display name for the model"
+              },
+              "apiKey": {
+                "type": "string",
+                "description": "API key for the model provider"
+              },
+              "apiEndpoint": {
+                "type": "string",
+                "description": "Optional custom API endpoint"
+              },
+              "inputTokens": {
+                "type": "number",
+                "description": "Maximum input tokens",
+                "default": 8000
+              },
+              "outputTokens": {
+                "type": "number", 
+                "description": "Maximum output tokens",
+                "default": 2000
+              },
+              "options": {
+                "type": "object",
+                "description": "Additional options for the model"
+              }
+            },
+            "required": ["provider", "model"]
+          }
+        },
         "cody.internal.unstable": {
           "order": 999,
           "type": "boolean",
