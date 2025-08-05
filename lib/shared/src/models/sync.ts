@@ -624,7 +624,7 @@ function getModelsFromVSCodeConfiguration({
                 apiEndpoint: m.apiEndpoint,
                 options: m.options,
             },
-            tags: [ModelTag.Local, ModelTag.BYOK, ModelTag.Experimental],
+            tags: [ModelTag.Local, ModelTag.BYOK],
             title: m.title, // Use the title from config if provided
         })
     ) ?? []
