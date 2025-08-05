@@ -31,6 +31,14 @@ import type { GetItemsResult } from './quick-pick'
 import { fetchDocumentSymbols, getLabelForContextItem, removeAfterLastAt } from './utils'
 
 export class EditInputFlow implements vscode.Disposable {
+    // Static variable to persist the last selected edit model across invocations
+    private static lastSelectedEditModel: EditModel | undefined
+
+    // Static method to get the last selected edit model
+    public static getLastSelectedEditModel(): EditModel | undefined {
+        return EditInputFlow.lastSelectedEditModel
+    }
+
     private editor: vscode.TextEditor
     private document: vscode.TextDocument
     private editInput: EditInput
@@ -68,7 +76,8 @@ export class EditInputFlow implements vscode.Disposable {
                 : editInput.expandedRange
                   ? EXPANDED_RANGE_ITEM
                   : SELECTION_RANGE_ITEM
-        this.activeModel = editInput.model
+        // Use the last selected model if available, otherwise use the provided model
+        this.activeModel = EditInputFlow.lastSelectedEditModel || editInput.model
 
         for (const file of editInput.userContextFiles ?? []) {
             this.selectedContextItems.set(getLabelForContextItem(file), file)
@@ -203,6 +212,9 @@ export class EditInputFlow implements vscode.Disposable {
         this.activeModelItem = item
         this.activeModel = item.model
         this.activeModelContextWindow = this.getContextWindowForModel(item.model)
+        
+        // Persist the selected model for future edit invocations
+        EditInputFlow.lastSelectedEditModel = item.model
         return { requiresUpgrade: false, modelTitle: item.modelTitle }
     }
 

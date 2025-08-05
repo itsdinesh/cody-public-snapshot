@@ -26,6 +26,7 @@ import { splitSafeMetadata } from '../services/telemetry-v2'
 import { EditLoggingFeatureFlagManager, getEditLoggingContext } from './edit-context-logging'
 import type { EditGuardrails } from './edit-guardrails'
 import type { ExecuteEditArguments, ExecuteEditResult } from './execute'
+import { EditInputFlow } from './input/edit-input-flow'
 import { EditProvider } from './provider'
 import { getEditIntent, isStreamedIntent } from './utils/edit-intent'
 import { getEditMode } from './utils/edit-mode'
@@ -98,7 +99,10 @@ export class EditManager implements vscode.Disposable {
 
     public async getEditModel(config: { model?: EditModel }): Promise<EditModel> {
         const model =
-            config.model || (await firstResultFromOperation(modelsService.getDefaultEditModel()))
+            config.model || 
+            // Use the last selected model from EditInputFlow if available
+            EditInputFlow.getLastSelectedEditModel() ||
+            (await firstResultFromOperation(modelsService.getDefaultEditModel()))
 
         if (!model) {
             throw new Error('No default edit model found. Please set one.')

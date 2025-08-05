@@ -9,7 +9,7 @@ import { isMacOS } from '@sourcegraph/cody-shared'
 import { DeepCodyAgentID, ToolCodyModelName } from '@sourcegraph/cody-shared/src/models/client'
 import { clsx } from 'clsx'
 import { AlertTriangleIcon, BookOpenIcon, BrainIcon, BuildingIcon, ExternalLinkIcon } from 'lucide-react'
-import { type FunctionComponent, type ReactNode, useCallback, useMemo } from 'react'
+import React, { type FunctionComponent, type ReactNode, useCallback, useMemo } from 'react'
 import type { UserAccountInfo } from '../../Chat'
 import { getVSCodeAPI } from '../../utils/VSCodeApi'
 import { useTelemetryRecorder } from '../../utils/telemetry'
@@ -61,8 +61,21 @@ export const ModelSelectField: React.FunctionComponent<{
 }) => {
     const telemetryRecorder = useTelemetryRecorder()
 
-    // The first model is the always the default.
-    const selectedModel = models[0]
+    // Find the model marked as default, fallback to first model if none found
+    const initialSelectedModel = models.find(model => model.tags.includes(ModelTag.Default)) || models[0]
+    
+    // Maintain local state for the selected model to ensure UI updates immediately
+    const [selectedModelId, setSelectedModelId] = React.useState(initialSelectedModel?.id)
+    
+    // Update local state when the models array changes (e.g., when default model changes from backend)
+    React.useEffect(() => {
+        const defaultModel = models.find(model => model.tags.includes(ModelTag.Default)) || models[0]
+        if (defaultModel && defaultModel.id !== selectedModelId) {
+            setSelectedModelId(defaultModel.id)
+        }
+    }, [models, selectedModelId])
+    
+    const selectedModel = models.find(model => model.id === selectedModelId) || models[0]
 
     const isCodyProUser = userInfo.isDotComUser && userInfo.isCodyProUser
     const isEnterpriseUser = !userInfo.isDotComUser
@@ -86,6 +99,9 @@ export const ModelSelectField: React.FunctionComponent<{
                         category: 'billable',
                     },
                 })
+                
+                // Update local state immediately for responsive UI
+                setSelectedModelId(model.id)
             }
             if (showCodyProBadge && isCodyProModel(model)) {
                 getVSCodeAPI().postMessage({
@@ -102,6 +118,7 @@ export const ModelSelectField: React.FunctionComponent<{
             showCodyProBadge,
             parentOnModelSelect,
             isCodyProUser,
+            setSelectedModelId,
         ]
     )
 
