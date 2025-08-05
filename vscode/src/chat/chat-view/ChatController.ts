@@ -660,6 +660,29 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
                     })
                     break
                 }
+                case 'cody.dev.models.get': {
+                    // Get current dev models from VS Code settings
+                    const config = vscode.workspace.getConfiguration('cody')
+                    const devModels = config.get<any[]>('dev.models', [])
+                    
+                    void this.postMessage({
+                        type: 'cody.dev.models.current',
+                        models: devModels,
+                    })
+                    break
+                }
+                case 'cody.dev.models.update': {
+                    // Update dev models in VS Code settings
+                    const config = vscode.workspace.getConfiguration('cody')
+                    await config.update('dev.models', message.models, vscode.ConfigurationTarget.Global)
+                    
+                    // Notify that models were updated
+                    void this.postMessage({
+                        type: 'cody.dev.models.updated',
+                        success: true,
+                    })
+                    break
+                }
             }
         } catch (error) {
             this.postError(error as Error)

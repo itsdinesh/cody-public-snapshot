@@ -8,10 +8,11 @@ import {
     isMacOS,
 } from '@sourcegraph/cody-shared'
 import clsx from 'clsx'
-import { type FunctionComponent, useCallback, useEffect, useMemo, useRef } from 'react'
+import { type FunctionComponent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { UserAccountInfo } from '../../../../../../Chat'
 import { ModelSelectField } from '../../../../../../components/modelSelectField/ModelSelectField'
 import { PromptSelectField } from '../../../../../../components/promptSelectField/PromptSelectField'
+import { DevModelManager } from '../../../../../../components/devModels/DevModelManager'
 import toolbarStyles from '../../../../../../components/shadcn/ui/toolbar.module.css'
 import { useActionSelect } from '../../../../../../prompts/promptUtils'
 import { useClientConfig } from '../../../../../../utils/useClientConfig'
@@ -91,6 +92,7 @@ export const Toolbar: FunctionComponent<{
 
     const modelSelectorRef = useRef<{ open: () => void; close: () => void } | null>(null)
     const promptSelectorRef = useRef<{ open: () => void; close: () => void } | null>(null)
+    const [isDevModelManagerOpen, setIsDevModelManagerOpen] = useState(false)
 
     // Set up keyboard event listener
     useEffect(() => {
@@ -163,9 +165,22 @@ export const Toolbar: FunctionComponent<{
                         intent={intent}
                     />
                 )}
+                <button
+                    type="button"
+                    className={`tw-opacity-60 focus-visible:tw-opacity-100 hover:tw-opacity-100 tw-mr-2 ${toolbarStyles.button} ${toolbarStyles.buttonSmallIcon}`}
+                    onClick={() => setIsDevModelManagerOpen(true)}
+                    title="Manage Custom Models"
+                    aria-label="Manage Custom Models"
+                >
+                    <i className="codicon codicon-settings-gear" />
+                </button>
             </div>
             <div className="tw-flex-1 tw-flex tw-justify-end">
                 <SubmitButton onClick={onSubmitClick} state={submitState} />
+                <DevModelManager 
+                    isOpen={isDevModelManagerOpen} 
+                    onClose={() => setIsDevModelManagerOpen(false)} 
+                />
             </div>
         </menu>
     )

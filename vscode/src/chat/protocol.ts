@@ -176,6 +176,20 @@ export type WebviewMessage =
           toolName?: string | undefined | null
           toolDisabled?: boolean | undefined | null
       }
+    | { command: 'cody.dev.models.get' }
+    | { 
+          command: 'cody.dev.models.update'
+          models: Array<{
+              provider: string
+              model: string
+              title?: string
+              apiKey?: string
+              apiEndpoint?: string
+              inputTokens?: number
+              outputTokens?: number
+              options?: Record<string, any>
+          }>
+      }
 
 export interface SmartApplyResult {
     taskId: FixupTaskID
@@ -233,6 +247,23 @@ export type ExtensionMessage =
     | ({ type: 'attribution' } & ExtensionAttributionMessage)
     | { type: 'rpc/response'; message: ResponseMessage }
     | { type: 'action/confirmationRequest'; id: string; step: ProcessingStep }
+    | { 
+          type: 'cody.dev.models.current'
+          models: Array<{
+              provider: string
+              model: string
+              title?: string
+              apiKey?: string
+              apiEndpoint?: string
+              inputTokens?: number
+              outputTokens?: number
+              options?: Record<string, any>
+          }>
+      }
+    | { 
+          type: 'cody.dev.models.updated'
+          success: boolean
+      }
 
 interface ExtensionAttributionMessage {
     snippet: string
