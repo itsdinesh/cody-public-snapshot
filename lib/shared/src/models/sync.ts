@@ -416,33 +416,7 @@ export function syncModels({
                                                     }
                                                 }
 
-                                                // BYPASS: Always prioritize cody.dev.models when they exist
-                                                const devModels = getModelsFromVSCodeConfiguration(config)
-                                                if (config.configuration.devModels && config.configuration.devModels.length > 0) {
-                                                    // If cody.dev.models are configured, use them exclusively
-                                                    data.primaryModels = devModels
-                                                    // Set the first dev model as default for both chat and edit
-                                                    if (data.preferences && devModels.length > 0) {
-                                                        data.preferences.defaults.chat = devModels[0].id
-                                                        data.preferences.defaults.edit = devModels[0].id
-                                                    }
-                                                } else {
-                                                    // Otherwise, add dev models (including spoofed default) to server models
-                                                    data.primaryModels.push(...devModels)
-                                                }
 
-                                                data.primaryModels = data.primaryModels.map(model => {
-                                                    if (
-                                                        model.modelRef ===
-                                                        data.preferences!.defaults.chat
-                                                    ) {
-                                                        return {
-                                                            ...model,
-                                                            tags: [...model.tags, ModelTag.Default],
-                                                        }
-                                                    }
-                                                    return model
-                                                })
 
                                                 return Observable.of(data)
                                             }
@@ -499,9 +473,9 @@ export function syncModels({
                 return serverModelsConfig
             })
         )
-    return combineLatest(localModels, remoteModelsData, userModelPreferences, authStatus).pipe(
+    return combineLatest(localModels, remoteModelsData, userModelPreferences, authStatus, relevantConfig).pipe(
         map(
-            ([localModels, remoteModelsData, userModelPreferences, currentAuthStatus]):
+            ([localModels, remoteModelsData, userModelPreferences, currentAuthStatus, config]):
                 | ModelsData
                 | typeof pendingOperation => {
                 if (remoteModelsData === pendingOperation) {
@@ -513,14 +487,50 @@ export function syncModels({
                     'rateLimited' in currentAuthStatus && currentAuthStatus.rateLimited
                 )
 
+                let primaryModels = isError(remoteModelsData)
+                    ? []
+                    : normalizeModelList(remoteModelsData.primaryModels)
+
+                // BYPASS: Always add dev models after server models processing
+                const devModels = getModelsFromVSCodeConfiguration(config)
+                if (config.configuration.devModels && config.configuration.devModels.length > 0) {
+                    // If cody.dev.models are configured, use them exclusively
+                    primaryModels = devModels
+                    logDebug('ModelsService', `Using ${devModels.length} dev models exclusively`)
+                } else {
+                    // Otherwise, add dev models (including spoofed default) to server models
+                    primaryModels.push(...devModels)
+                    logDebug('ModelsService', `Added ${devModels.length} dev models to ${primaryModels.length - devModels.length} server models`)
+                }
+
+                // Set up preferences
+                let preferences = isError(remoteModelsData)
+                    ? userModelPreferences
+                    : resolveModelPreferences(remoteModelsData.preferences, userModelPreferences)
+
+                // BYPASS: Set dev model as default when using dev models exclusively
+                if (config.configuration.devModels && config.configuration.devModels.length > 0 && devModels.length > 0) {
+                    if (preferences.defaults) {
+                        preferences.defaults.chat = devModels[0].id
+                        preferences.defaults.edit = devModels[0].id
+                    }
+                }
+
+                // Add default tags to the default model
+                primaryModels = primaryModels.map(model => {
+                    if (model.modelRef === preferences.defaults.chat) {
+                        return {
+                            ...model,
+                            tags: [...model.tags, ModelTag.Default],
+                        }
+                    }
+                    return model
+                })
+
                 return {
                     localModels,
-                    primaryModels: isError(remoteModelsData)
-                        ? []
-                        : normalizeModelList(remoteModelsData.primaryModels),
-                    preferences: isError(remoteModelsData)
-                        ? userModelPreferences
-                        : resolveModelPreferences(remoteModelsData.preferences, userModelPreferences),
+                    primaryModels,
+                    preferences,
                     isRateLimited,
                 }
             }
