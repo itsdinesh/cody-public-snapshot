@@ -12,6 +12,7 @@ import {
     disposableSubscription,
     distinctUntilChanged,
     clientCapabilities as getClientCapabilities,
+    logDebug,
     resolvedConfig as resolvedConfig_,
     setAuthStatusObservable as setAuthStatusObservable_,
     switchMap,
@@ -31,6 +32,7 @@ import { isRunningInsideAgent } from '../jsonrpc/isRunningInsideAgent'
 import { logError } from '../output-channel-logger'
 import { version } from '../version'
 import { localStorage } from './LocalStorageProvider'
+import { secretStorage } from './SecretStorageProvider'
 
 const HAS_AUTHENTICATED_BEFORE_KEY = 'has-authenticated-before'
 
@@ -54,6 +56,9 @@ class AuthProvider implements vscode.Disposable {
 
     constructor(setAuthStatusObservable = setAuthStatusObservable_, resolvedConfig = resolvedConfig_) {
         setAuthStatusObservable(this.status.pipe(distinctUntilChanged()))
+
+        // BYPASS: Clear any cached credentials to prevent interference with spoofed auth
+        void this.clearCachedCredentials()
 
         // BYPASS: Immediately emit spoofed authentication status on startup
         const spoofedAuthStatus: AuthenticatedAuthStatus = {
@@ -314,6 +319,28 @@ class AuthProvider implements vscode.Disposable {
                 clientCapabilities,
                 version,
             })
+        }
+    }
+
+    // BYPASS: Clear any cached credentials to prevent interference with spoofed auth
+    private async clearCachedCredentials(): Promise<void> {
+        try {
+            // Clear the last validated credentials
+            this.lastValidatedAndStoredCredentials.next(null)
+            
+            // Clear any stored endpoint history that might contain old auth data
+            const endpointHistory = localStorage.getEndpointHistory() || []
+            for (const endpoint of endpointHistory) {
+                await secretStorage.deleteToken(endpoint)
+                await localStorage.deleteEndpoint(endpoint)
+            }
+            
+            // Also clear the default dotcom endpoint
+            await secretStorage.deleteToken(DOTCOM_URL.toString())
+            
+            logDebug('AuthProvider', 'Cleared cached credentials for spoofed authentication')
+        } catch (error) {
+            logDebug('AuthProvider', 'Failed to clear cached credentials', { verbose: error })
         }
     }
 }

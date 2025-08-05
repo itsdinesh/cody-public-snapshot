@@ -162,6 +162,12 @@ export function syncModels({
                     RemoteModelsData | Error | typeof pendingOperation
                 > = clientConfig.pipe(
                     switchMapReplayOperation(maybeServerSideClientConfig => {
+                        // BYPASS: Skip server-side models entirely if cody.dev.models are configured
+                        if (config.configuration.devModels && config.configuration.devModels.length > 0) {
+                            logDebug('ModelsService', 'cody.dev.models configured, skipping server-side models')
+                            return Observable.of<RemoteModelsData>({ primaryModels: [], preferences: { defaults: {} } })
+                        }
+                        
                         // NOTE: isDotComUser to enable server-side models for DotCom users,
                         // as the modelsAPIEnabled is default to return false on DotCom to avoid older clients
                         // that also share the same check from breaking.
