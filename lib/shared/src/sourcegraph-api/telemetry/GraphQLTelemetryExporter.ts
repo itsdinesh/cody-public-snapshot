@@ -1,9 +1,5 @@
 import type { TelemetryEventInput, TelemetryExporter } from '@sourcegraph/telemetry'
 
-import { logError } from '../../logger'
-import { isError } from '../../utils'
-import { graphqlClient } from '../graphql/client'
-
 /**
  * GraphQLTelemetryExporter exports events via the new Sourcegraph telemetry
  * framework: https://sourcegraph.com/docs/dev/background-information/telemetry
@@ -14,15 +10,7 @@ import { graphqlClient } from '../graphql/client'
 export class GraphQLTelemetryExporter implements TelemetryExporter {
     constructor(private readonly allowedDevEvents?: { feature: string; action: string }[]) {}
 
-    private isEventAllowed(event: TelemetryEventInput): boolean {
-        if (this.allowedDevEvents === undefined) {
-            return true
-        }
 
-        return this.allowedDevEvents.some(
-            allowed => allowed.feature === event.feature && allowed.action === event.action
-        )
-    }
 
     /**
      * BYPASS: Disable telemetry export to prevent network requests

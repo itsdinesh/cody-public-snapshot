@@ -1,17 +1,16 @@
-import { Observable, map } from 'observable-fns'
+import { Observable } from 'observable-fns'
 import semver from 'semver'
-import { authStatus } from '../auth/authStatus'
 import type { AuthStatus } from '../auth/types'
-import { logError } from '../logger'
-import { distinctUntilChanged, pick, promiseFactoryToObservable, retry } from '../misc/observable'
 import {
     firstResultFromOperation,
     pendingOperation,
-    switchMapReplayOperation,
 } from '../misc/observableOperation'
-import { isError } from '../utils'
-import { isDotCom } from './environments'
+import { isError } from 'util'
+import { isDotCom } from '..'
+import { logError } from '../logger'
+import { isError } from 'util'
 import { graphqlClient } from './graphql'
+import { authStatus } from '..'
 
 // @link latestSupportedCompletionsStreamAPIVersion
 // https://sourcegraph.sourcegraph.com/search?q=context:global+latestSupportedCompletionsStreamAPIVersion

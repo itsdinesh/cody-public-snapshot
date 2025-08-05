@@ -1,10 +1,6 @@
-import { Observable, map } from 'observable-fns'
-import { authStatus } from '../auth/authStatus'
-import { logError } from '../logger'
-import { distinctUntilChanged, pick, promiseFactoryToObservable } from '../misc/observable'
-import { pendingOperation, switchMapReplayOperation } from '../misc/observableOperation'
-import { type CodyLLMSiteConfiguration, graphqlClient } from '../sourcegraph-api/graphql/client'
-import { isError } from '../utils'
+import { Observable } from 'observable-fns'
+import { pendingOperation } from '../misc/observableOperation'
+import { type CodyLLMSiteConfiguration } from '../sourcegraph-api/graphql/client'
 
 /**
  * BYPASS: Always return null to disable server-side config overwrites and prevent network requests

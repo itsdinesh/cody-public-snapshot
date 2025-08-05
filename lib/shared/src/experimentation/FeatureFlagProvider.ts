@@ -1,12 +1,10 @@
 import { Observable, Subject, interval, map } from 'observable-fns'
 import { authStatus } from '../auth/authStatus'
 import type { AuthStatus, AuthenticatedAuthStatus } from '../auth/types'
-import { logError } from '../logger'
 import {
     type StoredLastValue,
     combineLatest,
     concat,
-    debounceTime,
     distinctUntilChanged,
     firstValueFrom,
     promiseFactoryToObservable,
