@@ -912,7 +912,7 @@
             "Suggests advanced context-aware code edits as you navigate the codebase. Experimental feature for Pro and Enterprise users.",
             "Disables all suggestions."
           ],
-          "default": "autocomplete",
+          "default": "off",
           "markdownDescription": "Controls the suggestion mode for Cody"
         },
         "cody.autocomplete.triggerDelay": {
@@ -977,7 +977,7 @@
           "title": "Cody Command Hints",
           "type": "boolean",
           "markdownDescription": "Enable hints for Cody commands such as \"Opt+K to Edit\" or \"Opt+D to Document\"",
-          "default": true
+          "default": false
         },
         "cody.experimental.tracing": {
           "order": 99,
