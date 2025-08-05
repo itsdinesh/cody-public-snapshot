@@ -61,17 +61,42 @@ export const ModelSelectField: React.FunctionComponent<{
 }) => {
     const telemetryRecorder = useTelemetryRecorder()
 
+    // Use a static variable to persist user selections across re-renders and backend updates
+    const getStoredSelection = () => {
+        return (ModelSelectField as any)._lastUserSelection
+    }
+    
+    const setStoredSelection = (modelId: string) => {
+        ;(ModelSelectField as any)._lastUserSelection = modelId
+    }
+    
     // Find the model marked as default, fallback to first model if none found
-    const initialSelectedModel = models.find(model => model.tags.includes(ModelTag.Default)) || models[0]
+    const defaultModel = models.find(model => model.tags.includes(ModelTag.Default)) || models[0]
+    
+    // Use stored selection if it exists and the model is still available, otherwise use default
+    const storedSelection = getStoredSelection()
+    const storedModelExists = storedSelection && models.find(model => model.id === storedSelection)
+    const initialSelectedModelId = storedModelExists ? storedSelection : defaultModel?.id
     
     // Maintain local state for the selected model to ensure UI updates immediately
-    const [selectedModelId, setSelectedModelId] = React.useState(initialSelectedModel?.id)
+    const [selectedModelId, setSelectedModelId] = React.useState(initialSelectedModelId)
     
-    // Update local state when the models array changes (e.g., when default model changes from backend)
+    // Update local state when the models array changes, but only if stored selection is no longer valid
     React.useEffect(() => {
-        const defaultModel = models.find(model => model.tags.includes(ModelTag.Default)) || models[0]
-        if (defaultModel && defaultModel.id !== selectedModelId) {
-            setSelectedModelId(defaultModel.id)
+        const storedSelection = getStoredSelection()
+        const storedModelExists = storedSelection && models.find(model => model.id === storedSelection)
+        
+        if (storedModelExists) {
+            // Use stored selection if it's still valid
+            if (selectedModelId !== storedSelection) {
+                setSelectedModelId(storedSelection)
+            }
+        } else {
+            // Fall back to default model if stored selection is invalid
+            const defaultModel = models.find(model => model.tags.includes(ModelTag.Default)) || models[0]
+            if (defaultModel && defaultModel.id !== selectedModelId) {
+                setSelectedModelId(defaultModel.id)
+            }
         }
     }, [models, selectedModelId])
     
@@ -102,6 +127,8 @@ export const ModelSelectField: React.FunctionComponent<{
                 
                 // Update local state immediately for responsive UI
                 setSelectedModelId(model.id)
+                // Store the user's selection persistently
+                setStoredSelection(model.id)
             }
             if (showCodyProBadge && isCodyProModel(model)) {
                 getVSCodeAPI().postMessage({
