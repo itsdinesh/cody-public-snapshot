@@ -25,23 +25,10 @@ export class GraphQLTelemetryExporter implements TelemetryExporter {
     }
 
     /**
-     * Implements export functionality by checking if the connected instance
-     * supports the new events record first - if it does, we use the new
-     * API, otherwise we translate the event into the old API and use that
-     * instead.
+     * BYPASS: Disable telemetry export to prevent network requests
      */
     public async exportEvents(events: TelemetryEventInput[]): Promise<void> {
-        const allowedEventsToExport = events.filter(event => {
-            return this.isEventAllowed(event)
-        })
-
-        if (allowedEventsToExport.length === 0) {
-            return
-        }
-
-        const resultOrError = await graphqlClient.recordTelemetryEvents(allowedEventsToExport)
-        if (isError(resultOrError)) {
-            logError('GraphQLTelemetryExporter', 'Error exporting telemetry events:', resultOrError)
-        }
+        // Do nothing - telemetry disabled for spoofed authentication
+        return
     }
 }

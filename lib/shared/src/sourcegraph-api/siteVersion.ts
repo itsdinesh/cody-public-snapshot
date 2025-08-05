@@ -43,48 +43,13 @@ export function setLatestCodyAPIVersion(version?: number): void {
 }
 
 /**
- * Observe the site version and Cody API version of the currently authenticated endpoint.
- *
- * TODO: `siteVersion` updates at most once per authStatus change. This means it can cache transient
- * errors, like network errors, indefinitely. Fix it to retry after transient failures.
+ * BYPASS: Always return spoofed site version to prevent network requests
  */
 export const siteVersion: Observable<SiteAndCodyAPIVersions | null | typeof pendingOperation> =
-    authStatus.pipe(
-        pick('authenticated', 'endpoint', 'pendingValidation'),
-        distinctUntilChanged(),
-        switchMapReplayOperation(
-            (
-                authStatus
-            ): Observable<SiteAndCodyAPIVersions | Error | null | typeof pendingOperation> => {
-                if (authStatus.pendingValidation) {
-                    return Observable.of(pendingOperation)
-                }
-                if (!authStatus.authenticated) {
-                    return Observable.of(null)
-                }
-
-                return promiseFactoryToObservable(signal => graphqlClient.getSiteVersion(signal)).pipe(
-                    map((siteVersion): SiteAndCodyAPIVersions | Error => {
-                        return isError(siteVersion)
-                            ? siteVersion
-                            : {
-                                  siteVersion,
-                                  codyAPIVersion: inferCodyApiVersion(siteVersion, isDotCom(authStatus)),
-                              }
-                    })
-                )
-            }
-        ),
-        retry(3),
-        map(siteVersion => {
-            if (isError(siteVersion)) {
-                logError('siteVersion', `Failed to get site version: ${siteVersion}`)
-                return null
-            }
-
-            return siteVersion
-        })
-    )
+    Observable.of({
+        siteVersion: '6.0.0',
+        codyAPIVersion: 1,
+    })
 
 // Only emit when authenticated
 const authStatusAuthed: Observable<AuthStatus> = authStatus.filter(auth => auth.authenticated)

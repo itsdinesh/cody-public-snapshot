@@ -232,36 +232,9 @@ export class FeatureFlagProviderImpl implements FeatureFlagProvider {
         distinctUntilChanged()
     )
 
-    private evaluatedFeatureFlags: Observable<Record<string, boolean>> = combineLatest(
-        this.relevantAuthStatusChanges,
-        this.refreshes
-    ).pipe(
-        debounceTime(0),
-        switchMap(([authStatus]) =>
-            promiseFactoryToObservable(signal =>
-                process.env.DISABLE_FEATURE_FLAGS
-                    ? Promise.resolve({})
-                    : graphqlClient.getEvaluatedFeatureFlags(Object.values(FeatureFlag), signal)
-            ).pipe(
-                map(resultOrError => {
-                    if (isError(resultOrError)) {
-                        logError(
-                            'FeatureFlagProvider',
-                            'Failed to get all evaluated feature flags',
-                            resultOrError
-                        )
-                    }
-
-                    // Cache so that FeatureFlagProvider.getExposedExperiments can return these synchronously.
-                    const result = isError(resultOrError) ? {} : resultOrError
-                    this.cache[authStatus.endpoint] = result
-                    return result
-                })
-            )
-        ),
-        distinctUntilChanged(),
-        shareReplay()
-    )
+    private evaluatedFeatureFlags: Observable<Record<string, boolean>> = 
+        // BYPASS: Always return empty feature flags to prevent network requests
+        Observable.of({})
 
     public getExposedExperiments(serverEndpoint: string): Record<string, boolean> {
         return this.cache[serverEndpoint] || {}
