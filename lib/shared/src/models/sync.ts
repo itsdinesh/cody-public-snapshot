@@ -168,13 +168,13 @@ export function syncModels({
                             logDebug('ModelsService', 'Authentication bypass detected, skipping server-side models entirely')
                             return Observable.of<RemoteModelsData>({ primaryModels: [], preferences: { defaults: {} } })
                         }
-                        
+
                         // BYPASS: Skip server-side models entirely if cody.dev.models are configured
                         if (config.configuration.devModels && config.configuration.devModels.length > 0) {
                             logDebug('ModelsService', 'cody.dev.models configured, skipping server-side models')
                             return Observable.of<RemoteModelsData>({ primaryModels: [], preferences: { defaults: {} } })
                         }
-                        
+
                         // NOTE: isDotComUser to enable server-side models for DotCom users,
                         // as the modelsAPIEnabled is default to return false on DotCom to avoid older clients
                         // that also share the same check from breaking.
@@ -485,6 +485,61 @@ export function syncModels({
             ([localModels, remoteModelsData, userModelPreferences, currentAuthStatus, config]):
                 | ModelsData
                 | typeof pendingOperation => {
+
+                // BYPASS: For spoofed authentication, always return models immediately
+                if (currentAuthStatus.username === 'spoofed-user') {
+                    const devModels = getModelsFromVSCodeConfiguration(config)
+                    logDebug('ModelsService', `BYPASS: Spoofed auth detected, using dev models directly: ${devModels.length}`)
+
+                    let primaryModels = devModels
+                    let preferences = userModelPreferences
+
+                    // If user has configured dev models, use them exclusively
+                    if (config.configuration.devModels && config.configuration.devModels.length > 0) {
+                        logDebug('ModelsService', `BYPASS: Using ${devModels.length} configured dev models exclusively`)
+                        // Set the first dev model as default
+                        if (devModels.length > 0) {
+                            preferences = {
+                                ...preferences,
+                                defaults: {
+                                    ...preferences.defaults,
+                                    chat: devModels[0].id,
+                                    edit: devModels[0].id,
+                                }
+                            }
+                        }
+                    } else {
+                        logDebug('ModelsService', `BYPASS: Using spoofed default model`)
+                        // Set the spoofed model as default
+                        if (devModels.length > 0) {
+                            preferences = {
+                                ...preferences,
+                                defaults: {
+                                    ...preferences.defaults,
+                                    chat: devModels[0].id,
+                                    edit: devModels[0].id,
+                                }
+                            }
+                        }
+                    }
+
+                    const result = {
+                        localModels: [],
+                        primaryModels,
+                        preferences,
+                        isRateLimited: false,
+                    }
+
+                    logDebug('ModelsService', `BYPASS: Final result for spoofed auth:`, JSON.stringify({
+                        primaryModelsCount: result.primaryModels.length,
+                        primaryModels: result.primaryModels.map(m => ({ id: m.id, title: m.title })),
+                        preferences: result.preferences
+                    }))
+
+                    return result
+                }
+
+                // Original logic for non-spoofed authentication
                 if (remoteModelsData === pendingOperation) {
                     return pendingOperation
                 }
@@ -500,6 +555,11 @@ export function syncModels({
 
                 // BYPASS: Always add dev models after server models processing
                 const devModels = getModelsFromVSCodeConfiguration(config)
+                logDebug('ModelsService', `Dev models from config: ${devModels.length}`, JSON.stringify(devModels.map(m => ({ id: m.id, title: m.title }))))
+                logDebug('ModelsService', `Server models before processing: ${primaryModels.length}`, JSON.stringify(primaryModels.map(m => ({ id: m.id, title: m.title }))))
+                logDebug('ModelsService', `Auth status: ${currentAuthStatus.username}, authenticated: ${currentAuthStatus.authenticated}`)
+                logDebug('ModelsService', `Config devModels: ${config.configuration.devModels?.length || 0}`)
+
                 if (config.configuration.devModels && config.configuration.devModels.length > 0) {
                     // If cody.dev.models are configured, use them exclusively
                     primaryModels = devModels
@@ -509,6 +569,8 @@ export function syncModels({
                     primaryModels.push(...devModels)
                     logDebug('ModelsService', `Added ${devModels.length} dev models to ${primaryModels.length - devModels.length} server models`)
                 }
+
+                logDebug('ModelsService', `Final primary models: ${primaryModels.length}`, JSON.stringify(primaryModels.map(m => ({ id: m.id, title: m.title }))))
 
                 // Set up preferences
                 let preferences = isError(remoteModelsData)
@@ -534,12 +596,22 @@ export function syncModels({
                     return model
                 })
 
-                return {
+                const result = {
                     localModels,
                     primaryModels,
                     preferences,
                     isRateLimited,
                 }
+
+                logDebug('ModelsService', `Final ModelsData result:`, JSON.stringify({
+                    localModelsCount: result.localModels.length,
+                    primaryModelsCount: result.primaryModels.length,
+                    primaryModels: result.primaryModels.map(m => ({ id: m.id, title: m.title })),
+                    preferences: result.preferences,
+                    isRateLimited: result.isRateLimited
+                }))
+
+                return result
             }
         ),
         distinctUntilChanged(),
@@ -618,6 +690,8 @@ export interface ChatModelProviderConfig {
 function getModelsFromVSCodeConfiguration({
     configuration: { devModels },
 }: PickResolvedConfiguration<{ configuration: 'devModels' }>): Model[] {
+    logDebug('ModelsService', `getModelsFromVSCodeConfiguration called with devModels:`, JSON.stringify(devModels))
+
     const configModels = devModels?.map(m =>
         createModel({
             id: `${m.provider}/${m.model}`,
@@ -638,7 +712,7 @@ function getModelsFromVSCodeConfiguration({
 
     // BYPASS: Always prioritize cody.dev.models when they exist
     if (configModels.length > 0) {
-        logDebug('ModelsService', `Using ${configModels.length} cody.dev.models from configuration`)
+        logDebug('ModelsService', `Using ${configModels.length} cody.dev.models from configuration`, JSON.stringify(configModels.map(m => ({ id: m.id, title: m.title }))))
         return configModels
     }
 
@@ -655,7 +729,7 @@ function getModelsFromVSCodeConfiguration({
         provider: 'anthropic',
         title: 'Claude 3.5 Sonnet (Latest)',
     })
-    logDebug('ModelsService', 'No cody.dev.models configured, using spoofed default model')
+    logDebug('ModelsService', 'No cody.dev.models configured, using spoofed default model', JSON.stringify({ id: spoofedModel.id, title: spoofedModel.title }))
     return [spoofedModel]
 }
 
