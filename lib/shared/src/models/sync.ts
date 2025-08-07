@@ -164,7 +164,7 @@ export function syncModels({
                     switchMapReplayOperation(maybeServerSideClientConfig => {
                         // BYPASS: Always skip server-side models when using authentication bypass
                         // Check if we're using spoofed authentication (username is "spoofed-user")
-                        if (authStatus.username === 'spoofed-user') {
+                        if (authStatus.authenticated && authStatus.username === 'spoofed-user') {
                             logDebug('ModelsService', 'Authentication bypass detected, skipping server-side models entirely')
                             return Observable.of<RemoteModelsData>({ primaryModels: [], preferences: { defaults: {} } })
                         }
@@ -487,7 +487,7 @@ export function syncModels({
                 | typeof pendingOperation => {
 
                 // BYPASS: For spoofed authentication, always return models immediately
-                if (currentAuthStatus.username === 'spoofed-user') {
+                if (currentAuthStatus.authenticated && currentAuthStatus.username === 'spoofed-user') {
                     const devModels = getModelsFromVSCodeConfiguration(config)
                     logDebug('ModelsService', `BYPASS: Spoofed auth detected, using dev models directly: ${devModels.length}`)
 
@@ -557,7 +557,7 @@ export function syncModels({
                 const devModels = getModelsFromVSCodeConfiguration(config)
                 logDebug('ModelsService', `Dev models from config: ${devModels.length}`, JSON.stringify(devModels.map(m => ({ id: m.id, title: m.title }))))
                 logDebug('ModelsService', `Server models before processing: ${primaryModels.length}`, JSON.stringify(primaryModels.map(m => ({ id: m.id, title: m.title }))))
-                logDebug('ModelsService', `Auth status: ${currentAuthStatus.username}, authenticated: ${currentAuthStatus.authenticated}`)
+                logDebug('ModelsService', `Auth status: ${currentAuthStatus.authenticated ? currentAuthStatus.username : 'unauthenticated'}, authenticated: ${currentAuthStatus.authenticated}`)
                 logDebug('ModelsService', `Config devModels: ${config.configuration.devModels?.length || 0}`)
 
                 if (config.configuration.devModels && config.configuration.devModels.length > 0) {
