@@ -74,6 +74,19 @@ The Cody extension has been modified to:
   - Modified `getDefaultChatModel()` to return the same model
 - **Effect**: Ensures edit functionality has a model to work with
 
+### 9. `lib/shared/src/models/sync.ts`
+- **Purpose**: Completely bypass server-side model fetching when using authentication bypass
+- **Changes**:
+  - Added check for spoofed authentication (`username === 'spoofed-user'`) to skip all server-side model requests
+  - Enhanced `getModelsFromVSCodeConfiguration()` to provide better logging and always return models
+  - Ensured `cody.dev.models` are prioritized exclusively when configured
+  - Added fallback to spoofed default model when no dev models are configured
+- **Effect**: 
+  - Eliminates all network requests to Sourcegraph servers for model fetching
+  - Ensures models are loaded purely from `cody.dev.models` configuration
+  - Prevents conflicts between server models and user-configured models
+  - Provides consistent model availability regardless of server state
+
 ### 9. `lib/shared/src/sourcegraph-api/userProductSubscription.ts`
 - **Purpose**: Always return Pro user subscription status
 - **Change**: Modified `userProductSubscription` observable to return `{ userCanUpgrade: false }`

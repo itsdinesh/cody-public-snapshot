@@ -162,6 +162,13 @@ export function syncModels({
                     RemoteModelsData | Error | typeof pendingOperation
                 > = clientConfig.pipe(
                     switchMapReplayOperation(maybeServerSideClientConfig => {
+                        // BYPASS: Always skip server-side models when using authentication bypass
+                        // Check if we're using spoofed authentication (username is "spoofed-user")
+                        if (authStatus.username === 'spoofed-user') {
+                            logDebug('ModelsService', 'Authentication bypass detected, skipping server-side models entirely')
+                            return Observable.of<RemoteModelsData>({ primaryModels: [], preferences: { defaults: {} } })
+                        }
+                        
                         // BYPASS: Skip server-side models entirely if cody.dev.models are configured
                         if (config.configuration.devModels && config.configuration.devModels.length > 0) {
                             logDebug('ModelsService', 'cody.dev.models configured, skipping server-side models')
@@ -629,12 +636,14 @@ function getModelsFromVSCodeConfiguration({
         })
     ) ?? []
 
-    // BYPASS: Always prioritize cody.dev.models when they exist, regardless of authentication status
+    // BYPASS: Always prioritize cody.dev.models when they exist
     if (configModels.length > 0) {
+        logDebug('ModelsService', `Using ${configModels.length} cody.dev.models from configuration`)
         return configModels
     }
 
-    // BYPASS: Only add spoofed default model if no cody.dev.models are configured
+    // BYPASS: Provide spoofed default model when no cody.dev.models are configured
+    // This ensures the extension always has a working model available
     const spoofedModel = createModel({
         id: 'anthropic::2024-10-22::claude-3-5-sonnet-latest',
         usage: [ModelUsage.Chat, ModelUsage.Edit],
@@ -642,10 +651,11 @@ function getModelsFromVSCodeConfiguration({
             input: CHAT_INPUT_TOKEN_BUDGET,
             output: ANSWER_TOKENS,
         },
-        tags: [ModelTag.Pro],
+        tags: [ModelTag.Pro, ModelTag.BYOK],
         provider: 'anthropic',
         title: 'Claude 3.5 Sonnet (Latest)',
     })
+    logDebug('ModelsService', 'No cody.dev.models configured, using spoofed default model')
     return [spoofedModel]
 }
 
