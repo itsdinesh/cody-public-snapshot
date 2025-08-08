@@ -35,7 +35,6 @@ import {
     CURRENT_SITE_CODY_LLM_PROVIDER,
     CURRENT_SITE_GRAPHQL_FIELDS_QUERY,
     CURRENT_SITE_HAS_CODY_ENABLED_QUERY,
-    CURRENT_SITE_VERSION_QUERY,
     CURRENT_USER_CODY_PRO_ENABLED_QUERY,
     CURRENT_USER_CODY_SUBSCRIPTION_QUERY,
     CURRENT_USER_ID_QUERY,
@@ -82,9 +81,7 @@ interface APIResponse<T> {
     errors?: { message: string; path?: string[] }[]
 }
 
-interface SiteVersionResponse {
-    site: { productVersion: string } | null
-}
+
 
 type FuzzyFindFilesResponse = {
     __typename?: 'Query'
@@ -688,7 +685,7 @@ const QUERY_TO_NAME_REGEXP = /^\s*(?:query|mutation)\s+(\w+)/m
 export class SourcegraphGraphQLAPIClient {
     private isAgentTesting = process.env.CODY_SHIM_TESTING === 'true'
     private readonly resultCacheFactory: ObservableInvalidatedGraphQLResultCacheFactory
-    private readonly siteVersionCache: GraphQLResultCache<string>
+
 
     public static withGlobalConfig(): SourcegraphGraphQLAPIClient {
         return new SourcegraphGraphQLAPIClient(resolvedConfig.pipe(distinctUntilChanged()))
@@ -719,7 +716,7 @@ export class SourcegraphGraphQLAPIClient {
                 backoffFactor: 1.5, // Back off exponentially
             }
         )
-        this.siteVersionCache = this.resultCacheFactory.create<string>('SiteProductVersion')
+
     }
 
     dispose(): void {
