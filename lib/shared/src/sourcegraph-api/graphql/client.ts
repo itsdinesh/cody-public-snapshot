@@ -19,7 +19,7 @@ import { isError } from '../../utils'
 import { addCodyClientIdentificationHeaders } from '../client-name-version'
 import { NeedsAuthChallengeError, isAbortError, isNeedsAuthChallengeError } from '../errors'
 import { addAuthHeaders } from '../utils'
-import { type GraphQLResultCache, ObservableInvalidatedGraphQLResultCacheFactory } from './cache'
+import { ObservableInvalidatedGraphQLResultCacheFactory } from './cache'
 import {
     BUILTIN_PROMPTS_QUERY,
     CHANGE_PROMPT_VISIBILITY,
