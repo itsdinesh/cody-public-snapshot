@@ -727,18 +727,8 @@ export class SourcegraphGraphQLAPIClient {
     }
 
     public async getSiteVersion(signal?: AbortSignal): Promise<string | Error> {
-        return this.siteVersionCache.get(signal, signal =>
-            this.fetchSourcegraphAPI<APIResponse<SiteVersionResponse>>(
-                CURRENT_SITE_VERSION_QUERY,
-                {},
-                signal
-            ).then(response =>
-                extractDataOrError(
-                    response,
-                    data => data.site?.productVersion ?? new Error('site version not found')
-                )
-            )
-        )
+        // BYPASS: Always return spoofed site version to prevent network requests
+        return '6.0.0'
     }
 
     public async getRemoteFiles(
