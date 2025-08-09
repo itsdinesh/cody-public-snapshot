@@ -87,8 +87,9 @@ export class EditInputFlow implements vscode.Disposable {
         if (this.activeModel) {
             this.activeModelItem = {
                 model: this.activeModel,
-                modelTitle: this.activeModel.title || this.activeModel.id,
-                codyProOnly: true,
+                modelTitle: this.activeModel, // Use the model ID as title initially
+                codyProOnly: false, // Default to false, will be updated when models are loaded
+                label: this.activeModel, // Use the model ID as label initially
             }
         }
 
