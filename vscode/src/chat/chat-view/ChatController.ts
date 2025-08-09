@@ -1863,7 +1863,35 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
                             map(models => (models === pendingOperation ? null : models))
                         ),
                     chatModels: () =>
-                        Observable.of([]).pipe(
+                        promiseFactoryToObservable(async () => {
+                            try {
+                                // Load custom models immediately from VS Code settings
+                                const config = vscode.workspace.getConfiguration('cody')
+                                const devModels = config.get<any[]>('dev.models') || []
+                                
+                                // Convert dev models to Model objects for chat usage
+                                const customModels = devModels
+                                    .filter(model => model.provider && model.model)
+                                    .map(devModel => ({
+                                        id: `${devModel.provider}/${devModel.model}`,
+                                        provider: devModel.provider,
+                                        title: devModel.title || `${devModel.provider}/${devModel.model}`,
+                                        usage: ['chat', 'edit'],
+                                        contextWindow: {
+                                            input: devModel.inputTokens || 8000,
+                                            output: devModel.outputTokens || 2000,
+                                        },
+                                        tags: [],
+                                        apiKey: devModel.apiKey,
+                                        apiEndpoint: devModel.apiEndpoint,
+                                    }))
+                                
+                                return customModels
+                            } catch (error) {
+                                console.warn('Failed to load custom models:', error)
+                                return []
+                            }
+                        }).pipe(
                             startWith([])
                         ),
                     highlights: parameters =>
