@@ -157,20 +157,20 @@ export const DevModelManager: React.FC<DevModelManagerProps> = ({ isOpen, onClos
     return (
         <div className="tw-fixed tw-inset-0 tw-bg-gray-900 tw-bg-opacity-90 tw-flex tw-items-center tw-justify-center tw-z-50">
             <Card className="tw-w-full tw-max-w-2xl tw-max-h-[80vh] tw-overflow-y-auto tw-m-4 tw-bg-gray-800 tw-border-gray-700">
-                <CardHeader className="tw-flex tw-flex-row tw-items-center tw-justify-between tw-bg-gray-800 tw-border-b tw-border-gray-700 tw-p-4">
+                <CardHeader className="tw-bg-gray-800 tw-border-b tw-border-gray-700 tw-p-4">
                     <CardTitle className="tw-flex tw-items-center tw-gap-2 tw-text-white tw-text-lg tw-font-semibold">
                         <SettingsIcon size={20} />
                         Custom Models
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={onClose} 
+                            className="tw-text-white hover:tw-bg-gray-700 tw-text-xl tw-w-8 tw-h-8 tw-flex tw-items-center tw-justify-center tw-rounded-full tw-ml-2 tw-flex-shrink-0"
+                            aria-label="Close"
+                        >
+                            ×
+                        </Button>
                     </CardTitle>
-                    <Button 
-                        variant="ghost" 
-                        size="lg" 
-                        onClick={onClose} 
-                        className="tw-text-white hover:tw-bg-gray-700 tw-text-2xl tw-w-12 tw-h-12 tw-flex tw-items-center tw-justify-center tw-rounded-full tw-ml-4"
-                        aria-label="Close"
-                    >
-                        ×
-                    </Button>
                 </CardHeader>
                 <CardContent className="tw-space-y-6 tw-bg-gray-800 tw-text-white">
                     {/* Existing Models */}

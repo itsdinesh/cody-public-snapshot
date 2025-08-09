@@ -249,7 +249,8 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
                 authStatus.subscribe(authStatus => {
                     // Run this async because this method may be called during initialization
                     // and awaiting on this.postMessage may result in a deadlock
-                    void this.sendConfig(authStatus)
+                    // Use setTimeout to defer this and not block initialization
+                    setTimeout(() => void this.sendConfig(authStatus), 0)
                 })
             ),
             subscriptionDisposable(
@@ -698,23 +699,51 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
     }
 
     private async getConfigForWebview(): Promise<ConfigurationSubsetForWebview & LocalEnv> {
-        const { configuration, auth } = await currentResolvedConfig()
-        const [experimentalPromptEditorEnabled, internalAgentModeEnabled] = await Promise.all([
-            firstValueFrom(
-                featureFlagProvider.evaluatedFeatureFlag(FeatureFlag.CodyExperimentalPromptEditor)
-            ),
-            firstValueFrom(
-                featureFlagProvider.evaluatedFeatureFlag(FeatureFlag.NextAgenticChatInternal)
-            ),
+        // Add timeout to prevent blocking
+        const configPromise = Promise.race([
+            currentResolvedConfig(),
+            new Promise<{ configuration: any, auth: any }>((resolve) => 
+                setTimeout(() => resolve({ 
+                    configuration: { experimentalNoodle: false, internalDebugContext: false, internalDebugTokenUsage: false, overrideServerEndpoint: undefined }, 
+                    auth: { serverEndpoint: 'https://sourcegraph.com' } 
+                }), 100)
+            )
         ])
+        
+        const { configuration, auth } = await configPromise
+        
+        // Add timeout to feature flag calls
+        const featureFlagPromise = Promise.race([
+            Promise.all([
+                firstValueFrom(
+                    featureFlagProvider.evaluatedFeatureFlag(FeatureFlag.CodyExperimentalPromptEditor)
+                ),
+                firstValueFrom(
+                    featureFlagProvider.evaluatedFeatureFlag(FeatureFlag.NextAgenticChatInternal)
+                ),
+            ]),
+            new Promise<[boolean, boolean]>((resolve) => 
+                setTimeout(() => resolve([false, false]), 100)
+            )
+        ])
+        
+        const [experimentalPromptEditorEnabled, internalAgentModeEnabled] = await featureFlagPromise
         const experimentalAgenticChatEnabled = internalAgentModeEnabled && isS2(auth.serverEndpoint)
         const sidebarViewOnly = this.extensionClient.capabilities?.webviewNativeConfig?.view === 'single'
         const isEditorViewType = this.webviewPanelOrView?.viewType === 'cody.editorPanel'
         const webviewType = isEditorViewType && !sidebarViewOnly ? 'editor' : 'sidebar'
         const uiKindIsWeb = (cenv.CODY_OVERRIDE_UI_KIND ?? vscode.env.uiKind) === vscode.UIKind.Web
         const endpoints = localStorage.getEndpointHistory() ?? []
-        const attribution =
-            (await ClientConfigSingleton.getInstance().getConfig())?.attribution ?? GuardrailsMode.Off
+        
+        // Add timeout to client config call
+        const attributionPromise = Promise.race([
+            ClientConfigSingleton.getInstance().getConfig().then(config => config?.attribution ?? GuardrailsMode.Off),
+            new Promise<GuardrailsMode>((resolve) => 
+                setTimeout(() => resolve(GuardrailsMode.Off), 100)
+            )
+        ])
+        
+        const attribution = await attributionPromise
 
         return {
             uiKindIsWeb,
@@ -741,7 +770,8 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
 
     // When the webview sends the 'ready' message, respond by posting the view config
     private async handleReady(): Promise<void> {
-        await this.sendConfig(currentAuthStatus())
+        // Use setTimeout to make this non-blocking for faster initial load
+        setTimeout(() => void this.sendConfig(currentAuthStatus()), 0)
     }
 
     private async sendConfig(authStatus: AuthStatus): Promise<void> {
@@ -760,10 +790,18 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
 
         if (authStatus.authenticated && !isCodyTesting) {
             try {
-                const [siteResult, subscriptionResult] = await Promise.all([
-                    graphqlClient.getSiteHasCodyEnabled(),
-                    graphqlClient.getCurrentUserCodySubscription(),
+                // Add timeout to prevent blocking the UI
+                const fetchWithTimeout = Promise.race([
+                    Promise.all([
+                        graphqlClient.getSiteHasCodyEnabled(),
+                        graphqlClient.getCurrentUserCodySubscription(),
+                    ]),
+                    new Promise<[null, null]>((resolve) => 
+                        setTimeout(() => resolve([null, null]), 200) // 200ms timeout
+                    )
                 ])
+
+                const [siteResult, subscriptionResult] = await fetchWithTimeout
 
                 siteHasCodyEnabled = isError(siteResult) ? null : siteResult
                 currentUserCodySubscription = isError(subscriptionResult) ? null : subscriptionResult
@@ -778,7 +816,10 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
             config: configForWebview,
             clientCapabilities: clientCapabilities(),
             authStatus: authStatus,
-            userProductSubscription: await currentUserProductSubscription(),
+            userProductSubscription: await Promise.race([
+                currentUserProductSubscription(),
+                new Promise<null>((resolve) => setTimeout(() => resolve(null), 200)) // 200ms timeout
+            ]),
             workspaceFolderUris,
             isDotComUser: isDotCom(authStatus),
             siteHasCodyEnabled,
@@ -1870,7 +1911,7 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
                                 const modelLoadPromise = Promise.race([
                                     firstResultFromOperation(modelsService.getModels(ModelUsage.Chat)),
                                     new Promise<[]>((resolve) => 
-                                        setTimeout(() => resolve([]), 1000) // 1 second timeout
+                                        setTimeout(() => resolve([]), 100) // 100ms timeout for faster loading
                                     )
                                 ])
                                 
@@ -1904,7 +1945,22 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
                             await modelsService.setSelectedModel(ModelUsage.Chat, model)
                         })
                     },
-                    defaultContext: () => defaultContext.pipe(skipPendingOperation()),
+                    defaultContext: () => 
+                        promiseFactoryToObservable(async () => {
+                            try {
+                                // Add timeout to prevent blocking
+                                const contextPromise = Promise.race([
+                                    firstResultFromOperation(defaultContext),
+                                    new Promise<{ initialContext: [], corpusContext: [] }>((resolve) => 
+                                        setTimeout(() => resolve({ initialContext: [], corpusContext: [] }), 200)
+                                    )
+                                ])
+                                return await contextPromise
+                            } catch (error) {
+                                console.warn('Default context loading failed, using fallback:', error)
+                                return { initialContext: [], corpusContext: [] }
+                            }
+                        }),
                     resolvedConfig: () => resolvedConfig,
                     authStatus: () => authStatus,
                     transcript: () =>
