@@ -89,11 +89,26 @@ export class EditInputFlow implements vscode.Disposable {
             const modelObject = modelsService.getModelByID(this.activeModel)
             const displayTitle = modelObject?.title || modelObject?.id || this.activeModel
             
+            // Add provider icon to the label
+            const getModelProviderIcon = (provider: string): string => {
+                const MODEL_PROVIDER_ICONS: Record<string, string> = {
+                    anthropic: '$(anthropic-logo)',
+                    openai: '$(openai-logo)',
+                    mistral: '$(mistral-logo)',
+                    ollama: '$(ollama-logo)',
+                    google: '$(gemini-logo)',
+                }
+                return MODEL_PROVIDER_ICONS[provider.toLowerCase()] || '$(cody-logo)'
+            }
+            
+            const icon = modelObject?.provider ? getModelProviderIcon(modelObject.provider) : '$(cody-logo)'
+            const QUICK_PICK_ITEM_EMPTY_INDENT_PREFIX = '\u00A0\u00A0\u00A0\u00A0\u00A0'
+            
             this.activeModelItem = {
                 model: this.activeModel,
                 modelTitle: displayTitle,
                 codyProOnly: false,
-                label: displayTitle,
+                label: `${QUICK_PICK_ITEM_EMPTY_INDENT_PREFIX} ${icon} ${displayTitle}`,
             }
         }
 
