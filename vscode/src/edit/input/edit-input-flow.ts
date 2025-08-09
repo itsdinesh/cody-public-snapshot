@@ -84,13 +84,16 @@ export class EditInputFlow implements vscode.Disposable {
         this.activeModelContextWindow = this.getContextWindowForModel(this.activeModel)
         
         // Set up the active model item immediately so it shows the model name in the UI
-        // We'll set a temporary item here and update it properly in init() when models are loaded
         if (this.activeModel) {
+            // Try to get the proper model title immediately
+            const modelObject = modelsService.getModelByID(this.activeModel)
+            const displayTitle = modelObject?.title || modelObject?.id || this.activeModel
+            
             this.activeModelItem = {
                 model: this.activeModel,
-                modelTitle: this.activeModel, // Temporary - will be updated in init()
+                modelTitle: displayTitle,
                 codyProOnly: false,
-                label: this.activeModel, // Temporary - will be updated in init()
+                label: displayTitle,
             }
         }
 
