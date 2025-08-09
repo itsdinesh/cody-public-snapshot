@@ -142,6 +142,7 @@ import { OmniboxTelemetry } from './handlers/OmniboxTelemetry'
 import { getAgent } from './handlers/registry'
 import { getPromptsMigrationInfo, startPromptsMigration } from './prompts-migration'
 import { MCPManager } from './tools/MCPManager'
+import { Model } from '@anthropic-ai/sdk/resources'
 
 export interface ChatControllerOptions {
     extensionUri: vscode.Uri
@@ -1876,7 +1877,7 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
                                         id: `${devModel.provider}/${devModel.model}`,
                                         provider: devModel.provider,
                                         title: devModel.title || `${devModel.provider}/${devModel.model}`,
-                                        usage: ['chat', 'edit'],
+                                        usage: [ModelUsage.Chat, ModelUsage.Edit],
                                         contextWindow: {
                                             input: devModel.inputTokens || 8000,
                                             output: devModel.outputTokens || 2000,
@@ -1884,7 +1885,7 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
                                         tags: [],
                                         apiKey: devModel.apiKey,
                                         apiEndpoint: devModel.apiEndpoint,
-                                    }))
+                                    })) as Model[]
                                 
                                 return customModels
                             } catch (error) {
