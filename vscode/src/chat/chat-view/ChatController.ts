@@ -35,12 +35,10 @@ import {
     currentAuthStatus,
     currentAuthStatusAuthed,
     currentResolvedConfig,
-    currentUserProductSubscription,
     distinctUntilChanged,
     extractContextFromTraceparent,
     featureFlagProvider,
     firstResultFromOperation,
-    firstValueFrom,
     forceHydration,
     getDefaultSystemPrompt,
     graphqlClient,
@@ -771,8 +769,8 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
                 status: 'ACTIVE',
                 plan: 'PRO',
                 applyProRateLimits: false,
-                currentPeriodStartAt: new Date().toISOString(),
-                currentPeriodEndAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+                currentPeriodStartAt: new Date(),
+                currentPeriodEndAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
             }
         }
 
@@ -783,7 +781,6 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
             authStatus: authStatus,
             userProductSubscription: {
                 userCanUpgrade: false,
-                plan: 'PRO',
                 usage: {
                     chat: { used: 0, limit: 1000000 },
                     code: { used: 0, limit: 1000000 },
@@ -1815,9 +1812,7 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
         )
 
         // Listen for API calls from the webview.
-        const defaultContext = getEmptyOrDefaultContextObservable({
-            chatBuilder: this.chatBuilder.changes,
-        }).pipe(shareReplay())
+        // Note: defaultContext removed since we're using static empty context
 
         this.disposables.push(
             addMessageListenersForExtensionAPI(
