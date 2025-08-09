@@ -82,6 +82,15 @@ export class EditInputFlow implements vscode.Disposable {
 
         this.symbolsPromise = fetchDocumentSymbols(this.document)
         this.activeModelContextWindow = this.getContextWindowForModel(this.activeModel)
+        
+        // Set up the active model item immediately so it shows the model name in the UI
+        if (this.activeModel) {
+            this.activeModelItem = {
+                model: this.activeModel,
+                modelTitle: this.activeModel.title || this.activeModel.id,
+                codyProOnly: true,
+            }
+        }
 
         this.textDocumentListener = vscode.workspace.onDidChangeTextDocument(event => {
             if (event.document !== this.document) {
