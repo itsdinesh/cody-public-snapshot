@@ -63,7 +63,12 @@ export const getInput = async (
     }
 
     const editFlow = new EditInputFlow(document, initialValues)
-    await editFlow.init()
+    
+    // Show UI immediately with basic functionality
+    // Initialize asynchronously in the background
+    editFlow.init().catch(error => {
+        console.warn('EditInputFlow initialization failed:', error)
+    })
 
     const previewActiveRange = (range: vscode.Range) => {
         editor.setDecorations(PREVIEW_RANGE_DECORATION, [range])

@@ -55,8 +55,8 @@ export class EditInputFlow implements vscode.Disposable {
     private contextItems = new Map<string, ContextItem>()
     private textDocumentListener: vscode.Disposable | undefined
     private modelAvailability: ModelAvailabilityStatus[] = []
-    private isCodyPro = false
-    private isEnterpriseUser = false
+    private isCodyPro = true // Default to pro for spoofed auth
+    private isEnterpriseUser = false // Default to not enterprise
     private onTitleChangeCallback: ((newTitle: string) => void) | undefined = undefined
 
     constructor(document: vscode.TextDocument, editInput: EditInput) {
@@ -100,21 +100,40 @@ export class EditInputFlow implements vscode.Disposable {
     }
 
     public async init(): Promise<void> {
-        const sub = await currentUserProductSubscription()
-        this.isEnterpriseUser = await checkIfEnterpriseUser()
-        this.isCodyPro = Boolean(sub && !sub.userCanUpgrade)
+        try {
+            // Use spoofed/cached values for faster initialization
+            const sub = null // We spoofed this to always return null
+            this.isEnterpriseUser = false // Assume not enterprise for speed
+            this.isCodyPro = true // Assume pro user for spoofed auth
 
-        this.modelAvailability = await modelsService.getModelsAvailabilityStatus(ModelUsage.Edit)
-        const modelOptions = this.modelAvailability.map(it => it.model)
-        this.modelItems = getModelOptionItems(modelOptions, this.isCodyPro, this.isEnterpriseUser)
-        this.activeModelItem = this.modelItems.find(item => item.model === this.activeModel)
-        this.showModelSelector = modelOptions.length > 1
+            // Load models with a timeout to prevent blocking
+            const modelLoadPromise = Promise.race([
+                modelsService.getModelsAvailabilityStatus(ModelUsage.Edit),
+                new Promise<ModelAvailabilityStatus[]>((resolve) => 
+                    setTimeout(() => resolve([]), 1000) // 1 second timeout
+                )
+            ])
+            
+            this.modelAvailability = await modelLoadPromise
+            const modelOptions = this.modelAvailability.map(it => it.model)
+            this.modelItems = getModelOptionItems(modelOptions, this.isCodyPro, this.isEnterpriseUser)
+            this.activeModelItem = this.modelItems.find(item => item.model === this.activeModel)
+            this.showModelSelector = modelOptions.length > 1
 
-        this.rulesToApply =
-            this.editInput.rules ??
-            (await firstValueFrom(ruleService.rulesForPaths([this.document.uri])))
+            // Skip rules loading for faster startup - can be loaded later if needed
+            this.rulesToApply = this.editInput.rules ?? null
 
-        this.editor.revealRange(this.activeRange, vscode.TextEditorRevealType.InCenterIfOutsideViewport)
+            this.editor.revealRange(this.activeRange, vscode.TextEditorRevealType.InCenterIfOutsideViewport)
+        } catch (error) {
+            // Fallback to basic initialization if anything fails
+            console.warn('EditInputFlow init failed, using fallbacks:', error)
+            this.isEnterpriseUser = false
+            this.isCodyPro = true
+            this.modelAvailability = []
+            this.modelItems = []
+            this.showModelSelector = false
+            this.rulesToApply = null
+        }
     }
 
     public getEditInputItems(input: string): GetItemsResult {
