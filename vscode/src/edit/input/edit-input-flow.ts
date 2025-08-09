@@ -47,7 +47,7 @@ export class EditInputFlow implements vscode.Disposable {
     private activeRangeItem: QuickPickItem
     private activeModelContextWindow: number
     private rulesToApply: Rule[] | null = null
-    private showModelSelector = false
+    private showModelSelector = true
     private selectedContextItems = new Map<string, ContextItem>()
     private contextItems = new Map<string, ContextItem>()
     private textDocumentListener: vscode.Disposable | undefined
