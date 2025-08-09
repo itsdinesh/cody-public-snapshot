@@ -1871,21 +1871,22 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
                                 const devModels = config.get<any[]>('dev.models') || []
                                 
                                 // Convert dev models to Model objects for chat usage
-                                const customModels = devModels
+                                const customModels: Model[] = devModels
                                     .filter(model => model.provider && model.model)
-                                    .map(devModel => ({
-                                        id: `${devModel.provider}/${devModel.model}`,
-                                        provider: devModel.provider,
-                                        title: devModel.title || `${devModel.provider}/${devModel.model}`,
-                                        usage: [ModelUsage.Chat, ModelUsage.Edit],
-                                        contextWindow: {
-                                            input: devModel.inputTokens || 8000,
-                                            output: devModel.outputTokens || 2000,
-                                        },
-                                        tags: [],
-                                        apiKey: devModel.apiKey,
-                                        apiEndpoint: devModel.apiEndpoint,
-                                    })) as Model[]
+                                    .map(devModel => {
+                                        const model: Model = {
+                                            id: `${devModel.provider}/${devModel.model}`,
+                                            provider: devModel.provider,
+                                            title: devModel.title || `${devModel.provider}/${devModel.model}`,
+                                            usage: [ModelUsage.Chat, ModelUsage.Edit],
+                                            contextWindow: {
+                                                input: devModel.inputTokens || 8000,
+                                                output: devModel.outputTokens || 2000,
+                                            },
+                                            tags: [],
+                                        }
+                                        return model
+                                    })
                                 
                                 return customModels
                             } catch (error) {
