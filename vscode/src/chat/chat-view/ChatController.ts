@@ -61,7 +61,6 @@ import {
     resolvedConfig,
     serializeChatMessage,
     serializeContextItem,
-    shareReplay,
     skip,
     startWith,
     subscriptionDisposable,
@@ -123,7 +122,6 @@ import { TestSupport } from '../../test-support'
 import type { MessageErrorType } from '../MessageProvider'
 import { DeepCodyAgent } from '../agentic/DeepCody'
 import { getMentionMenuData } from '../context/chatContext'
-import { getEmptyOrDefaultContextObservable } from '../initialContext'
 import type {
     ConfigurationSubsetForWebview,
     ExtensionMessage,
@@ -780,12 +778,7 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
             clientCapabilities: clientCapabilities(),
             authStatus: authStatus,
             userProductSubscription: {
-                userCanUpgrade: false,
-                usage: {
-                    chat: { used: 0, limit: 1000000 },
-                    code: { used: 0, limit: 1000000 },
-                    embeddings: { used: 0, limit: 1000000 }
-                }
+                userCanUpgrade: false
             }, // Use spoofed subscription data
             workspaceFolderUris,
             isDotComUser: isDotCom(authStatus),
