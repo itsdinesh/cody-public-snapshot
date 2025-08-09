@@ -23,6 +23,7 @@ interface DevModelManagerProps {
 
 export const DevModelManager: React.FC<DevModelManagerProps> = ({ isOpen, onClose }) => {
     const [models, setModels] = useState<DevModel[]>([])
+    const [editingIndex, setEditingIndex] = useState<number | null>(null)
     const [newModel, setNewModel] = useState<DevModel>({
         provider: '',
         model: '',
@@ -75,6 +76,57 @@ export const DevModelManager: React.FC<DevModelManagerProps> = ({ isOpen, onClos
         })
     }, [models])
 
+    const startEditing = useCallback((index: number) => {
+        setEditingIndex(index)
+        setNewModel(models[index])
+    }, [models])
+
+    const saveEdit = useCallback(() => {
+        if (editingIndex === null || !newModel.provider || !newModel.model) {
+            return
+        }
+
+        const modelToSave = {
+            ...newModel,
+            title: newModel.title || `${newModel.provider}/${newModel.model}`,
+        }
+
+        const updatedModels = [...models]
+        updatedModels[editingIndex] = modelToSave
+        setModels(updatedModels)
+        
+        // Save to VS Code settings
+        getVSCodeAPI().postMessage({
+            command: 'cody.dev.models.update',
+            models: updatedModels,
+        })
+
+        // Reset form
+        setEditingIndex(null)
+        setNewModel({
+            provider: '',
+            model: '',
+            title: '',
+            apiKey: '',
+            apiEndpoint: '',
+            inputTokens: 8000,
+            outputTokens: 2000,
+        })
+    }, [newModel, models, editingIndex])
+
+    const cancelEdit = useCallback(() => {
+        setEditingIndex(null)
+        setNewModel({
+            provider: '',
+            model: '',
+            title: '',
+            apiKey: '',
+            apiEndpoint: '',
+            inputTokens: 8000,
+            outputTokens: 2000,
+        })
+    }, [])
+
     const loadExistingModels = useCallback(() => {
         // Request current models from VS Code
         getVSCodeAPI().postMessage({
@@ -103,39 +155,49 @@ export const DevModelManager: React.FC<DevModelManagerProps> = ({ isOpen, onClos
     if (!isOpen) return null
 
     return (
-        <div className="tw-fixed tw-inset-0 tw-bg-black tw-bg-opacity-50 tw-flex tw-items-center tw-justify-center tw-z-50">
-            <Card className="tw-w-full tw-max-w-2xl tw-max-h-[80vh] tw-overflow-y-auto tw-m-4">
-                <CardHeader className="tw-flex tw-flex-row tw-items-center tw-justify-between">
-                    <CardTitle className="tw-flex tw-items-center tw-gap-2">
+        <div className="tw-fixed tw-inset-0 tw-bg-gray-900 tw-bg-opacity-90 tw-flex tw-items-center tw-justify-center tw-z-50">
+            <Card className="tw-w-full tw-max-w-2xl tw-max-h-[80vh] tw-overflow-y-auto tw-m-4 tw-bg-gray-800 tw-border-gray-700">
+                <CardHeader className="tw-flex tw-flex-row tw-items-center tw-justify-between tw-bg-gray-800 tw-border-b tw-border-gray-700">
+                    <CardTitle className="tw-flex tw-items-center tw-gap-2 tw-text-white">
                         <SettingsIcon size={20} />
-                        Custom Models (cody.dev.models)
+                        Custom Models
                     </CardTitle>
-                    <Button variant="ghost" size="sm" onClick={onClose}>
+                    <Button variant="ghost" size="lg" onClick={onClose} className="tw-text-white hover:tw-bg-gray-700 tw-text-xl tw-w-10 tw-h-10">
                         ×
                     </Button>
                 </CardHeader>
-                <CardContent className="tw-space-y-6">
+                <CardContent className="tw-space-y-6 tw-bg-gray-800 tw-text-white">
                     {/* Existing Models */}
                     {models.length > 0 && (
                         <div className="tw-space-y-3">
-                            <h3 className="tw-text-sm tw-font-medium">Configured Models</h3>
+                            <h3 className="tw-text-sm tw-font-medium tw-text-white">Configured Models</h3>
                             {models.map((model, index) => (
-                                <div key={index} className="tw-flex tw-items-center tw-justify-between tw-p-3 tw-border tw-rounded-md">
+                                <div key={index} className="tw-flex tw-items-center tw-justify-between tw-p-3 tw-border tw-border-gray-600 tw-rounded-md tw-bg-gray-700">
                                     <div>
-                                        <div className="tw-font-medium">{model.title || `${model.provider}/${model.model}`}</div>
-                                        <div className="tw-text-sm tw-text-muted-foreground">
+                                        <div className="tw-font-medium tw-text-white">{model.title || `${model.provider}/${model.model}`}</div>
+                                        <div className="tw-text-sm tw-text-gray-300">
                                             {model.provider} • {model.model}
                                             {model.apiEndpoint && ` • ${model.apiEndpoint}`}
                                         </div>
                                     </div>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => removeModel(index)}
-                                        className="tw-text-red-500 hover:tw-text-red-700"
-                                    >
-                                        <Trash2Icon size={16} />
-                                    </Button>
+                                    <div className="tw-flex tw-gap-2">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => startEditing(index)}
+                                            className="tw-text-blue-400 hover:tw-text-blue-300 hover:tw-bg-gray-600"
+                                        >
+                                            Edit
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => removeModel(index)}
+                                            className="tw-text-red-400 hover:tw-text-red-300 hover:tw-bg-gray-600"
+                                        >
+                                            <Trash2Icon size={16} />
+                                        </Button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -143,96 +205,122 @@ export const DevModelManager: React.FC<DevModelManagerProps> = ({ isOpen, onClos
 
                     {/* Add New Model Form */}
                     <div className="tw-space-y-4">
-                        <h3 className="tw-text-sm tw-font-medium tw-flex tw-items-center tw-gap-2">
+                        <h3 className="tw-text-sm tw-font-medium tw-flex tw-items-center tw-gap-2 tw-text-white">
                             <PlusIcon size={16} />
-                            Add New Model
+                            {editingIndex !== null ? 'Edit Model' : 'Add New Model'}
                         </h3>
                         
                         <div className="tw-grid tw-grid-cols-2 tw-gap-4">
                             <div>
-                                <Label htmlFor="provider">Provider *</Label>
+                                <Label htmlFor="provider" className="tw-text-white">Provider *</Label>
                                 <Input
                                     id="provider"
                                     placeholder="e.g., openai, anthropic, google"
                                     value={newModel.provider}
                                     onChange={(e) => setNewModel({ ...newModel, provider: e.target.value })}
+                                    className="tw-bg-gray-700 tw-border-gray-600 tw-text-white placeholder:tw-text-gray-400"
                                 />
                             </div>
                             <div>
-                                <Label htmlFor="model">Model *</Label>
+                                <Label htmlFor="model" className="tw-text-white">Model *</Label>
                                 <Input
                                     id="model"
                                     placeholder="e.g., gpt-4, claude-3-sonnet"
                                     value={newModel.model}
                                     onChange={(e) => setNewModel({ ...newModel, model: e.target.value })}
+                                    className="tw-bg-gray-700 tw-border-gray-600 tw-text-white placeholder:tw-text-gray-400"
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <Label htmlFor="title">Display Title</Label>
+                            <Label htmlFor="title" className="tw-text-white">Display Title</Label>
                             <Input
                                 id="title"
                                 placeholder="Optional display name"
                                 value={newModel.title}
                                 onChange={(e) => setNewModel({ ...newModel, title: e.target.value })}
+                                className="tw-bg-gray-700 tw-border-gray-600 tw-text-white placeholder:tw-text-gray-400"
                             />
                         </div>
 
                         <div>
-                            <Label htmlFor="apiKey">API Key</Label>
+                            <Label htmlFor="apiKey" className="tw-text-white">API Key</Label>
                             <Input
                                 id="apiKey"
                                 type="password"
                                 placeholder="Your API key"
                                 value={newModel.apiKey}
                                 onChange={(e) => setNewModel({ ...newModel, apiKey: e.target.value })}
+                                className="tw-bg-gray-700 tw-border-gray-600 tw-text-white placeholder:tw-text-gray-400"
                             />
                         </div>
 
                         <div>
-                            <Label htmlFor="apiEndpoint">API Endpoint</Label>
+                            <Label htmlFor="apiEndpoint" className="tw-text-white">API Endpoint</Label>
                             <Input
                                 id="apiEndpoint"
                                 placeholder="Optional custom endpoint"
                                 value={newModel.apiEndpoint}
                                 onChange={(e) => setNewModel({ ...newModel, apiEndpoint: e.target.value })}
+                                className="tw-bg-gray-700 tw-border-gray-600 tw-text-white placeholder:tw-text-gray-400"
                             />
                         </div>
 
                         <div className="tw-grid tw-grid-cols-2 tw-gap-4">
                             <div>
-                                <Label htmlFor="inputTokens">Input Tokens</Label>
+                                <Label htmlFor="inputTokens" className="tw-text-white">Input Tokens</Label>
                                 <Input
                                     id="inputTokens"
                                     type="number"
                                     value={newModel.inputTokens}
                                     onChange={(e) => setNewModel({ ...newModel, inputTokens: parseInt(e.target.value) || 8000 })}
+                                    className="tw-bg-gray-700 tw-border-gray-600 tw-text-white"
                                 />
                             </div>
                             <div>
-                                <Label htmlFor="outputTokens">Output Tokens</Label>
+                                <Label htmlFor="outputTokens" className="tw-text-white">Output Tokens</Label>
                                 <Input
                                     id="outputTokens"
                                     type="number"
                                     value={newModel.outputTokens}
                                     onChange={(e) => setNewModel({ ...newModel, outputTokens: parseInt(e.target.value) || 2000 })}
+                                    className="tw-bg-gray-700 tw-border-gray-600 tw-text-white"
                                 />
                             </div>
                         </div>
 
-                        <Button 
-                            onClick={addModel} 
-                            disabled={!newModel.provider || !newModel.model}
-                            className="tw-w-full"
-                        >
-                            <PlusIcon size={16} className="tw-mr-2" />
-                            Add Model
-                        </Button>
+                        {editingIndex !== null ? (
+                            <div className="tw-flex tw-gap-2">
+                                <Button 
+                                    onClick={saveEdit} 
+                                    disabled={!newModel.provider || !newModel.model}
+                                    className="tw-flex-1 tw-bg-blue-600 hover:tw-bg-blue-700"
+                                >
+                                    Save Changes
+                                </Button>
+                                <Button 
+                                    onClick={cancelEdit} 
+                                    variant="outline"
+                                    className="tw-flex-1 tw-border-gray-600 tw-text-white hover:tw-bg-gray-700"
+                                >
+                                    Cancel
+                                </Button>
+                            </div>
+                        ) : (
+                            <Button 
+                                onClick={addModel} 
+                                disabled={!newModel.provider || !newModel.model}
+                                className="tw-w-full tw-bg-green-600 hover:tw-bg-green-700"
+                            >
+                                <PlusIcon size={16} className="tw-mr-2" />
+                                Add Model
+                            </Button>
+                        )}
                     </div>
 
-                    <div className="tw-text-xs tw-text-muted-foreground tw-p-3 tw-bg-muted tw-rounded-md">
-                        <strong>Note:</strong> These models will be saved to your VS Code settings under <code>cody.dev.models</code>. 
+                    <div className="tw-text-xs tw-text-gray-300 tw-p-3 tw-bg-gray-700 tw-rounded-md tw-border tw-border-gray-600">
+                        <strong>Note:</strong> These models will be saved to your VS Code settings under <code className="tw-bg-gray-600 tw-px-1 tw-rounded">cody.dev.models</code>. 
                         They will be available immediately after adding and will persist across VS Code sessions.
                     </div>
                 </CardContent>
