@@ -6,10 +6,7 @@ import {
     ModelUsage,
     PromptString,
     type Rule,
-    checkIfEnterpriseUser,
-    currentUserProductSubscription,
     displayLineRange,
-    firstValueFrom,
     modelsService,
 } from '@sourcegraph/cody-shared'
 import * as vscode from 'vscode'
@@ -17,7 +14,7 @@ import * as vscode from 'vscode'
 import type { QuickPickItem } from 'vscode'
 import { getEditor } from '../../editor/active-editor'
 import { type TextChange, updateRangeMultipleChanges } from '../../non-stop/tracked-range'
-import { ruleService } from '../../rules/service'
+
 import { isGenerateIntent } from '../utils/edit-intent'
 import type { EditInput } from './get-input'
 import { CURSOR_RANGE_ITEM, EXPANDED_RANGE_ITEM, SELECTION_RANGE_ITEM } from './get-items/constants'
@@ -102,7 +99,6 @@ export class EditInputFlow implements vscode.Disposable {
     public async init(): Promise<void> {
         try {
             // Use spoofed/cached values for faster initialization
-            const sub = null // We spoofed this to always return null
             this.isEnterpriseUser = false // Assume not enterprise for speed
             this.isCodyPro = true // Assume pro user for spoofed auth
 
