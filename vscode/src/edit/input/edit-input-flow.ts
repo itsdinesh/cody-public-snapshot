@@ -84,12 +84,13 @@ export class EditInputFlow implements vscode.Disposable {
         this.activeModelContextWindow = this.getContextWindowForModel(this.activeModel)
         
         // Set up the active model item immediately so it shows the model name in the UI
+        // We'll set a temporary item here and update it properly in init() when models are loaded
         if (this.activeModel) {
             this.activeModelItem = {
                 model: this.activeModel,
-                modelTitle: this.activeModel, // Use the model ID as title initially
-                codyProOnly: false, // Default to false, will be updated when models are loaded
-                label: this.activeModel, // Use the model ID as label initially
+                modelTitle: this.activeModel, // Temporary - will be updated in init()
+                codyProOnly: false,
+                label: this.activeModel, // Temporary - will be updated in init()
             }
         }
 
@@ -123,7 +124,24 @@ export class EditInputFlow implements vscode.Disposable {
             this.modelAvailability = await modelLoadPromise
             const modelOptions = this.modelAvailability.map(it => it.model)
             this.modelItems = getModelOptionItems(modelOptions, this.isCodyPro, this.isEnterpriseUser)
-            this.activeModelItem = this.modelItems.find(item => item.model === this.activeModel)
+            
+            // Update the active model item with proper title and properties from loaded models
+            const foundModelItem = this.modelItems.find(item => item.model === this.activeModel)
+            if (foundModelItem) {
+                this.activeModelItem = foundModelItem
+            } else if (this.activeModel) {
+                // If model not found in available models, try to find the Model object directly
+                const modelObject = modelOptions.find(model => model.id === this.activeModel)
+                if (modelObject) {
+                    this.activeModelItem = {
+                        model: this.activeModel,
+                        modelTitle: modelObject.title || modelObject.id,
+                        codyProOnly: false,
+                        label: modelObject.title || modelObject.id,
+                    }
+                }
+            }
+            
             this.showModelSelector = modelOptions.length > 1
 
             // Skip rules loading for faster startup - can be loaded later if needed
