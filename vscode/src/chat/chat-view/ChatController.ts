@@ -1864,9 +1864,25 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
                             map(models => (models === pendingOperation ? null : models))
                         ),
                     chatModels: () =>
-                        modelsService.getModels(ModelUsage.Chat).pipe(
-                            startWith([]),
-                            map(models => (models === pendingOperation ? [] : models))
+                        promiseFactoryToObservable(async () => {
+                            try {
+                                // Use a timeout to prevent blocking the UI
+                                const modelLoadPromise = Promise.race([
+                                    firstResultFromOperation(modelsService.getModels(ModelUsage.Chat)),
+                                    new Promise<[]>((resolve) => 
+                                        setTimeout(() => resolve([]), 1000) // 1 second timeout
+                                    )
+                                ])
+                                
+                                const models = await modelLoadPromise
+                                return Array.isArray(models) ? models : []
+                            } catch (error) {
+                                // Fallback to empty array if loading fails
+                                console.warn('Chat models loading failed, using fallback:', error)
+                                return []
+                            }
+                        }).pipe(
+                            startWith([])
                         ),
                     highlights: parameters =>
                         promiseFactoryToObservable(() =>
