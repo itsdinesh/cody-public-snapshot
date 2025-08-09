@@ -65,7 +65,6 @@ import {
     serializeContextItem,
     shareReplay,
     skip,
-    skipPendingOperation,
     startWith,
     subscriptionDisposable,
     switchMap,
@@ -699,35 +698,18 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
     }
 
     private async getConfigForWebview(): Promise<ConfigurationSubsetForWebview & LocalEnv> {
-        // Add timeout to prevent blocking
-        const configPromise = Promise.race([
-            currentResolvedConfig(),
-            new Promise<{ configuration: any, auth: any }>((resolve) => 
-                setTimeout(() => resolve({ 
-                    configuration: { experimentalNoodle: false, internalDebugContext: false, internalDebugTokenUsage: false, overrideServerEndpoint: undefined }, 
-                    auth: { serverEndpoint: 'https://sourcegraph.com' } 
-                }), 100)
-            )
-        ])
+        // Use spoofed config data to avoid network requests
+        const configuration = { 
+            experimentalNoodle: false, 
+            internalDebugContext: false, 
+            internalDebugTokenUsage: false, 
+            overrideServerEndpoint: undefined 
+        }
+        const auth = { serverEndpoint: 'https://sourcegraph.com' }
         
-        const { configuration, auth } = await configPromise
-        
-        // Add timeout to feature flag calls
-        const featureFlagPromise = Promise.race([
-            Promise.all([
-                firstValueFrom(
-                    featureFlagProvider.evaluatedFeatureFlag(FeatureFlag.CodyExperimentalPromptEditor)
-                ),
-                firstValueFrom(
-                    featureFlagProvider.evaluatedFeatureFlag(FeatureFlag.NextAgenticChatInternal)
-                ),
-            ]),
-            new Promise<[boolean, boolean]>((resolve) => 
-                setTimeout(() => resolve([false, false]), 100)
-            )
-        ])
-        
-        const [experimentalPromptEditorEnabled, internalAgentModeEnabled] = await featureFlagPromise
+        // Use default feature flag values to avoid network requests
+        const experimentalPromptEditorEnabled = false
+        const internalAgentModeEnabled = false
         const experimentalAgenticChatEnabled = internalAgentModeEnabled && isS2(auth.serverEndpoint)
         const sidebarViewOnly = this.extensionClient.capabilities?.webviewNativeConfig?.view === 'single'
         const isEditorViewType = this.webviewPanelOrView?.viewType === 'cody.editorPanel'
@@ -735,15 +717,8 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
         const uiKindIsWeb = (cenv.CODY_OVERRIDE_UI_KIND ?? vscode.env.uiKind) === vscode.UIKind.Web
         const endpoints = localStorage.getEndpointHistory() ?? []
         
-        // Add timeout to client config call
-        const attributionPromise = Promise.race([
-            ClientConfigSingleton.getInstance().getConfig().then(config => config?.attribution ?? GuardrailsMode.Off),
-            new Promise<GuardrailsMode>((resolve) => 
-                setTimeout(() => resolve(GuardrailsMode.Off), 100)
-            )
-        ])
-        
-        const attribution = await attributionPromise
+        // Use default attribution to avoid network requests
+        const attribution = GuardrailsMode.Off
 
         return {
             uiKindIsWeb,
@@ -788,26 +763,16 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
         let siteHasCodyEnabled: boolean | null = null
         let currentUserCodySubscription: CurrentUserCodySubscription | null = null
 
+        // Skip network requests entirely for spoofed auth - use default values
         if (authStatus.authenticated && !isCodyTesting) {
-            try {
-                // Add timeout to prevent blocking the UI
-                const fetchWithTimeout = Promise.race([
-                    Promise.all([
-                        graphqlClient.getSiteHasCodyEnabled(),
-                        graphqlClient.getCurrentUserCodySubscription(),
-                    ]),
-                    new Promise<[null, null]>((resolve) => 
-                        setTimeout(() => resolve([null, null]), 200) // 200ms timeout
-                    )
-                ])
-
-                const [siteResult, subscriptionResult] = await fetchWithTimeout
-
-                siteHasCodyEnabled = isError(siteResult) ? null : siteResult
-                currentUserCodySubscription = isError(subscriptionResult) ? null : subscriptionResult
-            } catch (error) {
-                // Log error but don't fail the config send
-                console.error('Failed to fetch additional user data', error)
+            // Use spoofed/default values instead of making network requests
+            siteHasCodyEnabled = true // Assume Cody is enabled
+            currentUserCodySubscription = {
+                status: 'ACTIVE',
+                plan: 'PRO',
+                applyProRateLimits: false,
+                currentPeriodStartAt: new Date().toISOString(),
+                currentPeriodEndAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
             }
         }
 
@@ -816,10 +781,15 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
             config: configForWebview,
             clientCapabilities: clientCapabilities(),
             authStatus: authStatus,
-            userProductSubscription: await Promise.race([
-                currentUserProductSubscription(),
-                new Promise<null>((resolve) => setTimeout(() => resolve(null), 200)) // 200ms timeout
-            ]),
+            userProductSubscription: {
+                userCanUpgrade: false,
+                plan: 'PRO',
+                usage: {
+                    chat: { used: 0, limit: 1000000 },
+                    code: { used: 0, limit: 1000000 },
+                    embeddings: { used: 0, limit: 1000000 }
+                }
+            }, // Use spoofed subscription data
             workspaceFolderUris,
             isDotComUser: isDotCom(authStatus),
             siteHasCodyEnabled,
@@ -1905,24 +1875,7 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
                             map(models => (models === pendingOperation ? null : models))
                         ),
                     chatModels: () =>
-                        promiseFactoryToObservable(async () => {
-                            try {
-                                // Use a timeout to prevent blocking the UI
-                                const modelLoadPromise = Promise.race([
-                                    firstResultFromOperation(modelsService.getModels(ModelUsage.Chat)),
-                                    new Promise<[]>((resolve) => 
-                                        setTimeout(() => resolve([]), 100) // 100ms timeout for faster loading
-                                    )
-                                ])
-                                
-                                const models = await modelLoadPromise
-                                return Array.isArray(models) ? models : []
-                            } catch (error) {
-                                // Fallback to empty array if loading fails
-                                console.warn('Chat models loading failed, using fallback:', error)
-                                return []
-                            }
-                        }).pipe(
+                        Observable.of([]).pipe(
                             startWith([])
                         ),
                     highlights: parameters =>
@@ -1946,21 +1899,7 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
                         })
                     },
                     defaultContext: () => 
-                        promiseFactoryToObservable(async () => {
-                            try {
-                                // Add timeout to prevent blocking
-                                const contextPromise = Promise.race([
-                                    firstResultFromOperation(defaultContext),
-                                    new Promise<{ initialContext: [], corpusContext: [] }>((resolve) => 
-                                        setTimeout(() => resolve({ initialContext: [], corpusContext: [] }), 200)
-                                    )
-                                ])
-                                return await contextPromise
-                            } catch (error) {
-                                console.warn('Default context loading failed, using fallback:', error)
-                                return { initialContext: [], corpusContext: [] }
-                            }
-                        }),
+                        Observable.of({ initialContext: [], corpusContext: [] }),
                     resolvedConfig: () => resolvedConfig,
                     authStatus: () => authStatus,
                     transcript: () =>
