@@ -3,7 +3,7 @@
   "name": "cody-ai",
   "private": true,
   "displayName": "Cody: AI Code Assistant",
-  "version": "1.118.1-custom",
+  "version": "1.118.2-custom",
   "publisher": "sourcegraph",
   "license": "Apache-2.0",
   "icon": "resources/sourcegraph.png",
@@ -1150,7 +1150,7 @@
                 "description": "The model provider (e.g., openai, anthropic, google)"
               },
               "model": {
-                "type": "string", 
+                "type": "string",
                 "description": "The model name (e.g., gpt-4, claude-3-sonnet)"
               },
               "title": {
@@ -1171,7 +1171,7 @@
                 "default": 8000
               },
               "outputTokens": {
-                "type": "number", 
+                "type": "number",
                 "description": "Maximum output tokens",
                 "default": 2000
               },
