@@ -6,7 +6,6 @@ import { type AuthStatus, isCodyProUser, isEnterpriseUser } from '../auth/types'
 import { AUTH_STATUS_FIXTURE_AUTHED_DOTCOM } from '../auth/types'
 import { type PickResolvedConfiguration, resolvedConfig } from '../configuration/resolver'
 import { FeatureFlag, featureFlagProvider } from '../experimentation/FeatureFlagProvider'
-import { logDebug } from '../logger'
 import {
     type StoredLastValue,
     type Unsubscribable,
