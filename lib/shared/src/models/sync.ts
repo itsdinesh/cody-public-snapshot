@@ -163,15 +163,12 @@ export function syncModels({
                 > = clientConfig.pipe(
                     switchMapReplayOperation(maybeServerSideClientConfig => {
                         // BYPASS: Always skip server-side models when using authentication bypass
-                        // Check if we're using spoofed authentication (username is "spoofed-user")
                         if (authStatus.authenticated && authStatus.username === 'spoofed-user') {
-                            logDebug('ModelsService', 'Authentication bypass detected, skipping server-side models entirely')
                             return Observable.of<RemoteModelsData>({ primaryModels: [], preferences: { defaults: {} } })
                         }
 
                         // BYPASS: Skip server-side models entirely if cody.dev.models are configured
                         if (config.configuration.devModels && config.configuration.devModels.length > 0) {
-                            logDebug('ModelsService', 'cody.dev.models configured, skipping server-side models')
                             return Observable.of<RemoteModelsData>({ primaryModels: [], preferences: { defaults: {} } })
                         }
 
@@ -489,43 +486,20 @@ export function syncModels({
                 // BYPASS: For spoofed authentication, always return models immediately
                 if (currentAuthStatus.authenticated && currentAuthStatus.username === 'spoofed-user') {
                     const devModels = getModelsFromVSCodeConfiguration(config)
-                    logDebug('ModelsService', `BYPASS: Spoofed auth detected, using dev models directly: ${devModels.length}`)
 
-                    let primaryModels = devModels
-                    let preferences = userModelPreferences
-
-                    // If user has configured dev models, use them exclusively
-                    if (config.configuration.devModels && config.configuration.devModels.length > 0) {
-                        logDebug('ModelsService', `BYPASS: Using ${devModels.length} configured dev models exclusively`)
-                        // Set the first dev model as default
-                        if (devModels.length > 0) {
-                            preferences = {
-                                ...preferences,
-                                defaults: {
-                                    ...preferences.defaults,
-                                    chat: devModels[0].id,
-                                    edit: devModels[0].id,
-                                }
-                            }
-                        }
-                    } else {
-                        logDebug('ModelsService', `BYPASS: Using spoofed default model`)
-                        // Set the spoofed model as default
-                        if (devModels.length > 0) {
-                            preferences = {
-                                ...preferences,
-                                defaults: {
-                                    ...preferences.defaults,
-                                    chat: devModels[0].id,
-                                    edit: devModels[0].id,
-                                }
-                            }
-                        }
+                    // Preserve user selections and only set defaults if none exist
+                    const preferences = {
+                        defaults: {
+                            chat: userModelPreferences.defaults.chat || (devModels.length > 0 ? devModels[0].id : undefined),
+                            edit: userModelPreferences.defaults.edit || (devModels.length > 0 ? devModels[0].id : undefined),
+                        },
+                        // Critical: preserve user selections for persistence
+                        selected: userModelPreferences.selected
                     }
 
                     const result = {
                         localModels: [],
-                        primaryModels,
+                        primaryModels: devModels,
                         preferences,
                         isRateLimited: false,
                     }

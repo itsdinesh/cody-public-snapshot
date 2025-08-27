@@ -501,17 +501,17 @@ export class ModelsService {
                 if (editModel === pendingOperation) {
                     return pendingOperation
                 }
-                
+
                 // If user has selected a model, use it
                 if (editModel && !editModel.tags.includes(ModelTag.Reasoning)) {
                     return editModel.id as EditModel
                 }
-                
+
                 // Otherwise, fall back to our spoofed default
                 return 'anthropic::2024-10-22::claude-3-5-sonnet-latest' as EditModel
             })
         )
-        
+
         // Original code commented out:
         // return combineLatest(
         //     this.getDefaultModel(ModelUsage.Edit),
@@ -540,17 +540,17 @@ export class ModelsService {
                 if (model === pendingOperation) {
                     return pendingOperation
                 }
-                
+
                 // If user has selected a model, use it
                 if (model) {
                     return model.id as ChatModel
                 }
-                
+
                 // Otherwise, fall back to our spoofed default
                 return 'anthropic::2024-10-22::claude-3-5-sonnet-latest' as ChatModel
             })
         )
-        
+
         // Original code commented out:
         // return this.getDefaultModel(ModelUsage.Chat).pipe(
         //     map(model => (model === pendingOperation ? pendingOperation : model?.id))
@@ -566,7 +566,6 @@ export class ModelsService {
         if (!resolved.usage.includes(type)) {
             throw new Error(`Model "${resolved.id}" is not compatible with usage type "${type}".`)
         }
-        logDebug('ModelsService', `Setting selected ${type} model to ${resolved.id}`)
         if (!this.storage) {
             throw new Error('ModelsService.storage is not set')
         }
