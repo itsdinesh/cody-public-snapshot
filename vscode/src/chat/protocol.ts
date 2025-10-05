@@ -177,7 +177,7 @@ export type WebviewMessage =
           toolDisabled?: boolean | undefined | null
       }
     | { command: 'cody.dev.models.get' }
-    | { 
+    | {
           command: 'cody.dev.models.update'
           models: Array<{
               provider: string
@@ -188,7 +188,21 @@ export type WebviewMessage =
               inputTokens?: number
               outputTokens?: number
               options?: Record<string, any>
+              isDefaultChat?: boolean
+              isDefaultEdit?: boolean
           }>
+      }
+    | {
+          command: 'cody.dev.models.setDefaults'
+          chatDefault?: string
+          editDefault?: string
+      }
+    | {
+          command: 'cody.chat.model.remember'
+          modelId: string
+      }
+    | {
+          command: 'cody.chat.model.getRemembered'
       }
 
 export interface SmartApplyResult {
@@ -247,7 +261,7 @@ export type ExtensionMessage =
     | ({ type: 'attribution' } & ExtensionAttributionMessage)
     | { type: 'rpc/response'; message: ResponseMessage }
     | { type: 'action/confirmationRequest'; id: string; step: ProcessingStep }
-    | { 
+    | {
           type: 'cody.dev.models.current'
           models: Array<{
               provider: string
@@ -260,9 +274,18 @@ export type ExtensionMessage =
               options?: Record<string, any>
           }>
       }
-    | { 
+    | {
           type: 'cody.dev.models.updated'
           success: boolean
+      }
+    | {
+          type: 'cody.dev.models.defaultsSet'
+          success: boolean
+          error?: string
+      }
+    | {
+          type: 'cody.chat.model.remembered'
+          modelId: string
       }
 
 interface ExtensionAttributionMessage {

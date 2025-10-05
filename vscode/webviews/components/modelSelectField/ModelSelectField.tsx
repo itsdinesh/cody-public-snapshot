@@ -62,44 +62,66 @@ export const ModelSelectField: React.FunctionComponent<{
     const telemetryRecorder = useTelemetryRecorder()
 
     // Use a static variable to persist user selections across re-renders and backend updates
-    const getStoredSelection = () => {
-        return (ModelSelectField as any)._lastUserSelection
-    }
-    
-    const setStoredSelection = (modelId: string) => {
-        ;(ModelSelectField as any)._lastUserSelection = modelId
-    }
-    
     // Find the model marked as default, fallback to first model if none found
     const defaultModel = models.find(model => model.tags.includes(ModelTag.Default)) || models[0]
-    
+
     // Use stored selection if it exists and the model is still available, otherwise use default
-    const storedSelection = getStoredSelection()
+    const storedSelection = (ModelSelectField as any)._lastUserSelection
     const storedModelExists = storedSelection && models.find(model => model.id === storedSelection)
     const initialSelectedModelId = storedModelExists ? storedSelection : defaultModel?.id
-    
+
     // Maintain local state for the selected model to ensure UI updates immediately
     const [selectedModelId, setSelectedModelId] = React.useState(initialSelectedModelId)
-    
+
+    // Request remembered model from backend on mount
+    React.useEffect(() => {
+        // Request the remembered model immediately
+        getVSCodeAPI().postMessage({
+            command: 'cody.chat.model.getRemembered',
+        })
+    }, [])
+
+    // Listen for remembered model from backend
+    React.useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            const message = event.data
+            if (message.type === 'cody.chat.model.remembered' && message.modelId) {
+                const modelExists = models.find(m => m.id === message.modelId)
+                if (modelExists) {
+                    setSelectedModelId(message.modelId)
+                    ;(ModelSelectField as any)._lastUserSelection = message.modelId
+                }
+            }
+        }
+
+        window.addEventListener('message', handleMessage)
+        return () => window.removeEventListener('message', handleMessage)
+    }, [models])
+
     // Update local state when the models array changes, but only if stored selection is no longer valid
     React.useEffect(() => {
-        const storedSelection = getStoredSelection()
+        const storedSelection = (ModelSelectField as any)._lastUserSelection
         const storedModelExists = storedSelection && models.find(model => model.id === storedSelection)
-        
+
         if (storedModelExists) {
             // Use stored selection if it's still valid
             if (selectedModelId !== storedSelection) {
                 setSelectedModelId(storedSelection)
             }
-        } else {
-            // Fall back to default model if stored selection is invalid
+        } else if (!storedSelection) {
+            // Only fall back to default/first model if there's no stored selection at all
+            // This handles the initial load case
             const defaultModel = models.find(model => model.tags.includes(ModelTag.Default)) || models[0]
             if (defaultModel && defaultModel.id !== selectedModelId) {
                 setSelectedModelId(defaultModel.id)
             }
         }
+        // If storedSelection exists but model doesn't exist in list, keep current selection
+        // This prevents resetting when models array temporarily doesn't include the selected model
     }, [models, selectedModelId])
-    
+
+    // The selected model should be the one matching our selectedModelId
+    // Fall back to models[0] only if selectedModelId doesn't exist in the list
     const selectedModel = models.find(model => model.id === selectedModelId) || models[0]
 
     const isCodyProUser = userInfo.isDotComUser && userInfo.isCodyProUser
@@ -124,11 +146,17 @@ export const ModelSelectField: React.FunctionComponent<{
                         category: 'billable',
                     },
                 })
-                
+
                 // Update local state immediately for responsive UI
                 setSelectedModelId(model.id)
-                // Store the user's selection persistently
-                setStoredSelection(model.id)
+                // Store the user's selection persistently in memory
+                ;(ModelSelectField as any)._lastUserSelection = model.id
+
+                // Persist to backend storage for cross-restart persistence
+                getVSCodeAPI().postMessage({
+                    command: 'cody.chat.model.remember',
+                    modelId: model.id,
+                })
             }
             if (showCodyProBadge && isCodyProModel(model)) {
                 getVSCodeAPI().postMessage({
@@ -145,7 +173,6 @@ export const ModelSelectField: React.FunctionComponent<{
             showCodyProBadge,
             parentOnModelSelect,
             isCodyProUser,
-            setSelectedModelId,
         ]
     )
 
@@ -446,7 +473,7 @@ const ModelTitleWithIcon: React.FC<{
 
     return (
         <span
-            className={clsx(styles.modelTitleWithIcon, {
+            className={clsx(styles.modelTitleWithIcon, 'tw-min-w-0', {
                 [styles.disabled]: isDisabled,
             })}
         >
@@ -457,7 +484,9 @@ const ModelTitleWithIcon: React.FC<{
                     <ChatModelIcon model={model.provider} className={styles.modelIcon} />
                 )
             ) : null}
-            <span className={clsx('tw-flex-grow', styles.modelName)}>{model.title}</span>
+            <span className={clsx('tw-flex-grow tw-truncate tw-min-w-0', styles.modelName)}>
+                {model.title}
+            </span>
             {modelBadge && (
                 <Badge
                     variant="secondary"

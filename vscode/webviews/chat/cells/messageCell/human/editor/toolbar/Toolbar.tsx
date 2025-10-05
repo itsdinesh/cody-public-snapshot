@@ -10,9 +10,9 @@ import {
 import clsx from 'clsx'
 import { type FunctionComponent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { UserAccountInfo } from '../../../../../../Chat'
+import { DevModelManager } from '../../../../../../components/devModels/DevModelManager'
 import { ModelSelectField } from '../../../../../../components/modelSelectField/ModelSelectField'
 import { PromptSelectField } from '../../../../../../components/promptSelectField/PromptSelectField'
-import { DevModelManager } from '../../../../../../components/devModels/DevModelManager'
 import toolbarStyles from '../../../../../../components/shadcn/ui/toolbar.module.css'
 import { useActionSelect } from '../../../../../../prompts/promptUtils'
 import { useClientConfig } from '../../../../../../utils/useClientConfig'
@@ -125,7 +125,7 @@ export const Toolbar: FunctionComponent<{
             aria-hidden={hidden}
             hidden={hidden}
             className={clsx(
-                'tw-flex tw-items-center tw-justify-between tw-flex-wrap-reverse tw-border-t tw-border-t-border tw-gap-2 [&_>_*]:tw-flex-shrink-0',
+                'tw-flex tw-items-center tw-justify-between tw-flex-wrap-reverse tw-border-t tw-border-t-border tw-gap-2 tw-min-w-0',
                 className
             )}
             onMouseDown={onMaybeGapClick}
@@ -133,22 +133,22 @@ export const Toolbar: FunctionComponent<{
             onKeyDown={() => null}
             data-testid="chat-editor-toolbar"
         >
-            <div className="tw-flex tw-items-center">
+            <div className="tw-flex tw-items-center tw-min-w-0 tw-flex-1">
                 {onMediaUpload && isImageUploadEnabled && (
                     <MediaUploadButton
                         onMediaUpload={onMediaUpload}
                         isEditorFocused={isEditorFocused}
                         submitState={submitState}
-                        className={`tw-opacity-60 focus-visible:tw-opacity-100 hover:tw-opacity-100 tw-mr-2 tw-gap-0.5 ${toolbarStyles.button} ${toolbarStyles.buttonSmallIcon}`}
+                        className={`tw-opacity-60 focus-visible:tw-opacity-100 hover:tw-opacity-100 tw-mr-2 tw-gap-0.5 tw-flex-shrink-0 ${toolbarStyles.button} ${toolbarStyles.buttonSmallIcon}`}
                     />
                 )}
                 <PromptSelectFieldToolbarItem
                     focusEditor={focusEditor}
-                    className="tw-ml-1 tw-mr-1"
+                    className="tw-ml-1 tw-mr-1 tw-flex-shrink-0"
                     promptSelectorRef={promptSelectorRef}
                 />
                 <ModeSelectorField
-                    className={className}
+                    className={`${className} tw-flex-shrink-0`}
                     _intent={intent}
                     isDotComUser={userInfo?.isDotComUser}
                     isCodyProUser={userInfo?.isCodyProUser}
@@ -165,21 +165,21 @@ export const Toolbar: FunctionComponent<{
                         intent={intent}
                     />
                 )}
+            </div>
+            <div className="tw-flex tw-items-center tw-gap-2 tw-flex-shrink-0">
                 <button
                     type="button"
-                    className={`tw-opacity-60 focus-visible:tw-opacity-100 hover:tw-opacity-100 tw-mr-2 ${toolbarStyles.button} ${toolbarStyles.buttonSmallIcon}`}
+                    className={`tw-opacity-60 focus-visible:tw-opacity-100 hover:tw-opacity-100 ${toolbarStyles.button} ${toolbarStyles.buttonSmallIcon}`}
                     onClick={() => setIsDevModelManagerOpen(true)}
                     title="Manage Custom Models"
                     aria-label="Manage Custom Models"
                 >
                     <i className="codicon codicon-settings-gear" />
                 </button>
-            </div>
-            <div className="tw-flex-1 tw-flex tw-justify-end">
                 <SubmitButton onClick={onSubmitClick} state={submitState} />
-                <DevModelManager 
-                    isOpen={isDevModelManagerOpen} 
-                    onClose={() => setIsDevModelManagerOpen(false)} 
+                <DevModelManager
+                    isOpen={isDevModelManagerOpen}
+                    onClose={() => setIsDevModelManagerOpen(false)}
                 />
             </div>
         </menu>

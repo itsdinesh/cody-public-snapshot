@@ -37,6 +37,7 @@ class LocalStorage implements LocalStorageForModelPreferences {
     private readonly MODEL_PREFERENCES_KEY = 'cody-model-preferences'
     private readonly AUTO_EDITS_BETA_ENROLLED = 'cody-auto-edit-beta-onboard'
     private readonly DEVICE_PIXEL_RATIO = 'device-pixel-ratio'
+    private readonly REMEMBERED_CHAT_MODEL = 'cody-remembered-chat-model'
     public readonly CHAT_STORAGE_SIZE_LARGE = 50_000 * 1024 // 50,000 KB
 
     public readonly deprecatedKeys = {
@@ -349,6 +350,14 @@ class LocalStorage implements LocalStorageForModelPreferences {
 
     public async setDevicePixelRatio(ratio: number): Promise<void> {
         await this.set(this.DEVICE_PIXEL_RATIO, ratio)
+    }
+
+    public getChatModel(): string | null {
+        return this.get<string>(this.REMEMBERED_CHAT_MODEL)
+    }
+
+    public async setChatModel(modelId: string): Promise<void> {
+        await this.set(this.REMEMBERED_CHAT_MODEL, modelId)
     }
 
     public get<T>(key: string): T | null {

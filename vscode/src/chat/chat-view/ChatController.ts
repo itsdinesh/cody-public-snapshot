@@ -76,6 +76,7 @@ import * as vscode from 'vscode'
 
 import { type Span, context } from '@opentelemetry/api'
 import { captureException } from '@sentry/core'
+import type { Model } from '@sourcegraph/cody-shared'
 import { ChatHistoryType } from '@sourcegraph/cody-shared/src/chat/transcript'
 import type { SubMessage } from '@sourcegraph/cody-shared/src/chat/transcript/messages'
 import { resolveAuth } from '@sourcegraph/cody-shared/src/configuration/auth-resolver'
@@ -142,7 +143,6 @@ import { OmniboxTelemetry } from './handlers/OmniboxTelemetry'
 import { getAgent } from './handlers/registry'
 import { getPromptsMigrationInfo, startPromptsMigration } from './prompts-migration'
 import { MCPManager } from './tools/MCPManager'
-import type { Model } from '@sourcegraph/cody-shared'
 
 export interface ChatControllerOptions {
     extensionUri: vscode.Uri
@@ -657,11 +657,31 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
                     })
                     break
                 }
+                case 'cody.chat.model.remember': {
+                    // Store the user's selected chat model persistently
+                    if (message.modelId) {
+                        await localStorage.setChatModel(message.modelId)
+                    }
+                    break
+                }
+                case 'cody.chat.model.getRemembered': {
+                    // Send the remembered chat model to the webview
+                    const rememberedModel = localStorage.getChatModel()
+                    if (rememberedModel) {
+                        void this.postMessage({
+                            type: 'cody.chat.model.remembered',
+                            modelId: rememberedModel,
+                        })
+                    }
+                    break
+                }
                 case 'cody.dev.models.get': {
                     // Get current dev models from VS Code settings
                     const config = vscode.workspace.getConfiguration('cody')
                     const devModels = config.get<any[]>('dev.models', [])
-                    
+
+                    // Return models with their stored default flags
+                    // The flags are already stored in the configuration, so just return them as-is
                     void this.postMessage({
                         type: 'cody.dev.models.current',
                         models: devModels,
@@ -672,12 +692,119 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
                     // Update dev models in VS Code settings
                     const config = vscode.workspace.getConfiguration('cody')
                     await config.update('dev.models', message.models, vscode.ConfigurationTarget.Global)
-                    
+
                     // Notify that models were updated
                     void this.postMessage({
                         type: 'cody.dev.models.updated',
                         success: true,
                     })
+
+                    // The configuration observable chain doesn't reliably propagate changes
+                    // Automatically restart the extension host to ensure models update
+                    await vscode.commands.executeCommand('workbench.action.restartExtensionHost')
+                    break
+                }
+                case 'cody.dev.models.setDefaults': {
+                    // Set default models by updating flags and reordering the dev models configuration
+                    try {
+                        // Get current dev models from VS Code settings
+                        const config = vscode.workspace.getConfiguration('cody')
+                        let devModels = config.get<any[]>('dev.models', [])
+
+                        if (devModels.length === 0) {
+                            throw new Error('No dev models configured')
+                        }
+
+                        // Create a copy to modify
+                        devModels = devModels.map(model => ({ ...model }))
+
+                        // Clear all edit default flags first
+                        for (const model of devModels) {
+                            model.isDefaultEdit = false
+                        }
+
+                        // Set the edit default if specified
+                        if (message.editDefault) {
+                            const [provider, model] = message.editDefault.split('::')
+                            const editDefaultModel = devModels.find(
+                                m => m.provider === provider && m.model === model
+                            )
+                            if (editDefaultModel) {
+                                editDefaultModel.isDefaultEdit = true
+                            } else {
+                                throw new Error(`Edit model not found: ${message.editDefault}`)
+                            }
+                        }
+
+                        // Reorder models so that default edit model comes first if set
+                        const hasEditDefault = devModels.some(m => m.isDefaultEdit)
+                        if (hasEditDefault) {
+                            devModels.sort((a, b) => {
+                                if (a.isDefaultEdit && !b.isDefaultEdit) return -1
+                                if (!a.isDefaultEdit && b.isDefaultEdit) return 1
+                                return 0
+                            })
+                        }
+
+                        // Update the configuration with the modified and reordered models
+                        await config.update('dev.models', devModels, vscode.ConfigurationTarget.Global)
+
+                        // Wait for configuration to propagate and models service to update
+                        await new Promise(resolve => setTimeout(resolve, 500))
+
+                        // Wait for models service to have the updated models
+                        let retries = 0
+                        const maxRetries = 15
+                        while (retries < maxRetries) {
+                            try {
+                                const modelsData = await firstResultFromOperation(
+                                    modelsService.modelsChanges
+                                )
+                                const availableModelIds = [
+                                    ...(modelsData?.primaryModels?.map(m => m.id) || []),
+                                    ...(modelsData?.localModels?.map(m => m.id) || []),
+                                ]
+
+                                // Handle edit model selection/unselection
+                                if ('editDefault' in message) {
+                                    if (message.editDefault) {
+                                        // Setting an edit default
+                                        const editModelId = message.editDefault.replace('::', '/')
+                                        if (availableModelIds.includes(editModelId)) {
+                                            await modelsService.setSelectedModel(
+                                                ModelUsage.Edit,
+                                                editModelId
+                                            )
+                                            // Wait longer for the models observable to update and propagate to UI
+                                            await new Promise(resolve => setTimeout(resolve, 200))
+                                        } else {
+                                            continue // Retry
+                                        }
+                                    }
+                                    // When unsetting edit default, do nothing - keep current selection
+                                }
+
+                                // If we get here, all operations completed successfully
+                                break
+                            } catch (error) {
+                                // Models service not ready yet, continue retrying
+                            }
+
+                            retries++
+                            await new Promise(resolve => setTimeout(resolve, 150))
+                        }
+
+                        void this.postMessage({
+                            type: 'cody.dev.models.defaultsSet',
+                            success: true,
+                        })
+                    } catch (error) {
+                        void this.postMessage({
+                            type: 'cody.dev.models.defaultsSet',
+                            success: false,
+                            error: error instanceof Error ? error.message : 'Unknown error',
+                        })
+                    }
                     break
                 }
             }
@@ -696,14 +823,14 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
 
     private async getConfigForWebview(): Promise<ConfigurationSubsetForWebview & LocalEnv> {
         // Use spoofed config data to avoid network requests
-        const configuration = { 
-            experimentalNoodle: false, 
-            internalDebugContext: false, 
-            internalDebugTokenUsage: false, 
-            overrideServerEndpoint: undefined 
+        const configuration = {
+            experimentalNoodle: false,
+            internalDebugContext: false,
+            internalDebugTokenUsage: false,
+            overrideServerEndpoint: undefined,
         }
         const auth = { serverEndpoint: 'https://sourcegraph.com' }
-        
+
         // Use default feature flag values to avoid network requests
         const experimentalPromptEditorEnabled = false
         const internalAgentModeEnabled = false
@@ -713,7 +840,7 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
         const webviewType = isEditorViewType && !sidebarViewOnly ? 'editor' : 'sidebar'
         const uiKindIsWeb = (cenv.CODY_OVERRIDE_UI_KIND ?? vscode.env.uiKind) === vscode.UIKind.Web
         const endpoints = localStorage.getEndpointHistory() ?? []
-        
+
         // Use default attribution to avoid network requests
         const attribution = GuardrailsMode.Off
 
@@ -744,6 +871,15 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
     private async handleReady(): Promise<void> {
         // Use setTimeout to make this non-blocking for faster initial load
         setTimeout(() => void this.sendConfig(currentAuthStatus()), 0)
+
+        // Send remembered chat model if available
+        const rememberedModel = localStorage.getChatModel()
+        if (rememberedModel) {
+            void this.postMessage({
+                type: 'cody.chat.model.remembered',
+                modelId: rememberedModel,
+            })
+        }
     }
 
     private async sendConfig(authStatus: AuthStatus): Promise<void> {
@@ -779,7 +915,7 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
             clientCapabilities: clientCapabilities(),
             authStatus: authStatus,
             userProductSubscription: {
-                userCanUpgrade: false
+                userCanUpgrade: false,
             }, // Use spoofed subscription data
             workspaceFolderUris,
             isDotComUser: isDotCom(authStatus),
@@ -1869,30 +2005,33 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
                                 // Load custom models immediately from VS Code settings
                                 const config = vscode.workspace.getConfiguration('cody')
                                 const devModels = config.get<any[]>('dev.models') || []
-                                
+
                                 // Convert dev models to Model objects for chat usage
                                 const customModels: Model[] = devModels
                                     .filter(model => model.provider && model.model)
-                                    .map(devModel => ({
-                                        id: `${devModel.provider}/${devModel.model}`,
-                                        provider: devModel.provider,
-                                        title: devModel.title || `${devModel.provider}/${devModel.model}`,
-                                        usage: [ModelUsage.Chat, ModelUsage.Edit],
-                                        contextWindow: {
-                                            input: devModel.inputTokens || 8000,
-                                            output: devModel.outputTokens || 2000,
-                                        },
-                                        tags: [],
-                                    } as Model))
-                                
+                                    .map(
+                                        devModel =>
+                                            ({
+                                                id: `${devModel.provider}/${devModel.model}`,
+                                                provider: devModel.provider,
+                                                title:
+                                                    devModel.title ||
+                                                    `${devModel.provider}/${devModel.model}`,
+                                                usage: [ModelUsage.Chat, ModelUsage.Edit],
+                                                contextWindow: {
+                                                    input: devModel.inputTokens || 8000,
+                                                    output: devModel.outputTokens || 2000,
+                                                },
+                                                tags: [],
+                                            }) as Model
+                                    )
+
                                 return customModels
                             } catch (error) {
                                 console.warn('Failed to load custom models:', error)
                                 return []
                             }
-                        }).pipe(
-                            startWith([])
-                        ),
+                        }).pipe(startWith([])),
                     highlights: parameters =>
                         promiseFactoryToObservable(() =>
                             graphqlClient.getHighlightedFileChunk(parameters)
