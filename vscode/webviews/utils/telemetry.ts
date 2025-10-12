@@ -2,7 +2,6 @@ import type { TelemetryRecorder } from '@sourcegraph/cody-shared'
 
 import type { SpanContext } from '@opentelemetry/api'
 import { createContext, useContext } from 'react'
-import type { WebviewRecordEventParameters } from '../../src/chat/protocol'
 import type { ApiPostMessage } from '../Chat'
 import type { VSCodeWrapper } from './VSCodeApi'
 
@@ -13,18 +12,10 @@ import type { VSCodeWrapper } from './VSCodeApi'
 export function createWebviewTelemetryRecorder(
     postMessage: ApiPostMessage | Pick<VSCodeWrapper, 'postMessage'>
 ): TelemetryRecorder {
-    const actualPostMessage: ApiPostMessage =
-        typeof postMessage === 'function' ? postMessage : postMessage.postMessage.bind(postMessage)
-
+    // DISABLED: Telemetry and analytics are disabled
     return {
         recordEvent(feature, action, parameters) {
-            actualPostMessage({
-                command: 'recordEvent',
-                feature,
-                action,
-                // Forcibly cast to almost-identical protocol type
-                parameters: parameters as WebviewRecordEventParameters,
-            })
+            // Do nothing - telemetry disabled
         },
     }
 }

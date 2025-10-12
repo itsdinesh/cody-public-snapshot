@@ -1,13 +1,9 @@
 import { CallbackTelemetryProcessor } from '@sourcegraph/telemetry'
-import { cenv } from '../configuration/environment'
-import { logDebug } from '../logger'
 import {
     NoOpTelemetryRecorderProvider,
     type TelemetryRecorder,
     type TelemetryRecorderProvider,
 } from './TelemetryRecorderProvider'
-
-const debugLogLabel = 'telemetry-v2'
 
 export let telemetryRecorderProvider: TelemetryRecorderProvider | undefined
 
@@ -18,37 +14,19 @@ export let telemetryRecorderProvider: TelemetryRecorderProvider | undefined
  * See GraphQLTelemetryExporter to learn more about how events are exported
  * when recorded using the new recorder.
  *
- * The default recorder throws an error if it is used before initialization
- * via createOrUpdateTelemetryRecorderProvider.
+ * DISABLED: Telemetry is completely disabled - this is a no-op recorder
  *
  * DO NOT USE from webviews. Use the {@link useTelemetryRecorder} hook instead.
  */
 export let telemetryRecorder: TelemetryRecorder = new NoOpTelemetryRecorderProvider().getRecorder([
     new CallbackTelemetryProcessor(() => {
-        if (!cenv.CODY_TESTING_IGNORE_TELEMETRY_PROVIDER_ERROR) {
-            throw new Error('telemetry-v2: recorder used before initialization')
-        }
+        // DISABLED: Telemetry disabled - do nothing, don't throw error
     }),
 ])
 
 export function updateGlobalTelemetryInstances(
     updatedProvider: TelemetryRecorderProvider & { noOp?: boolean }
 ): void {
-    telemetryRecorderProvider?.unsubscribe()
-    telemetryRecorderProvider = updatedProvider
-    telemetryRecorder = updatedProvider.getRecorder([
-        // Log all events in debug for reference.
-        new CallbackTelemetryProcessor(event => {
-            logDebug(
-                debugLogLabel,
-                `recordEvent${updatedProvider.noOp ? ' (no-op)' : ''}: ${event.feature}/${event.action}`,
-                {
-                    verbose: {
-                        parameters: event.parameters,
-                        timestamp: event.timestamp,
-                    },
-                }
-            )
-        }),
-    ])
+    // DISABLED: Telemetry disabled - do nothing
+    // Keep the no-op recorder, don't update it
 }

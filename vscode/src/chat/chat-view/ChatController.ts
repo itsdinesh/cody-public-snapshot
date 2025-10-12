@@ -111,7 +111,6 @@ import { authProvider } from '../../services/AuthProvider'
 import { AuthProviderSimplified } from '../../services/AuthProviderSimplified'
 import { localStorage } from '../../services/LocalStorageProvider'
 import { secretStorage } from '../../services/SecretStorageProvider'
-import { TraceSender } from '../../services/open-telemetry/trace-sender'
 import {
     handleCodeFromInsertAtCursor,
     handleCodeFromSaveToNewFile,
@@ -339,7 +338,8 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
                     })
                     break
                 case 'trace-export':
-                    TraceSender.send(message.traceSpanEncodedJson)
+                    // DISABLED: Telemetry and traces are disabled
+                    // TraceSender.send(message.traceSpanEncodedJson)
                     break
                 case 'smartApplyAccept':
                     await vscode.commands.executeCommand('cody.command.smart-apply.accept', {

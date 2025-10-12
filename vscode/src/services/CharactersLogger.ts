@@ -1,7 +1,7 @@
 import omit from 'lodash/omit'
 import * as vscode from 'vscode'
 
-import { isFileURI, telemetryRecorder } from '@sourcegraph/cody-shared'
+import { isFileURI } from '@sourcegraph/cody-shared'
 
 import { outputChannelLogger } from '../output-channel-logger'
 
@@ -157,13 +157,15 @@ export class CharactersLogger implements vscode.Disposable {
                 clearTimeout(this.nextTimeoutId)
                 this.nextTimeoutId = null
             }
-            if (!this.isDisposed) {
-                telemetryRecorder.recordEvent('cody.characters', 'flush', {
-                    metadata: { ...this.changeCounters },
-                })
-            }
+            // DISABLED: Telemetry disabled - do nothing
+            // if (!this.isDisposed) {
+            //     telemetryRecorder.recordEvent('cody.characters', 'flush', {
+            //         metadata: { ...this.changeCounters },
+            //     })
+            // }
         } catch (error) {
-            outputChannelLogger.logError('CharactersLogger', 'Failed to record telemetry event:', error)
+            // Telemetry disabled - suppress error logging
+            // outputChannelLogger.logError('CharactersLogger', 'Failed to record telemetry event:', error)
         } finally {
             this.changeCounters = { ...DEFAULT_COUNTERS }
             if (!this.isDisposed) {

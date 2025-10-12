@@ -1,5 +1,4 @@
 import type { LiteralUnion } from 'type-fest'
-import { logError } from '../../logger'
 declare const fallbackVariant: unique symbol
 // we disguise the fallbackValue as a tagged string so that it can be exported as a type
 export const fallbackValue = '__fallback__' as const
@@ -79,20 +78,9 @@ export function event<
         feature,
         action,
     }
-    // we wrap the record Fn so that errors never break the execution
-    // but instead are just logged. Tests should catch these events.
-    const wrappedRecord = (...args: Args) => {
-        const fn = record(ctx)
-        const handleError = (e: any) => {
-            logError('Telemetry Recording', 'Failed to record telemetry event', {
-                error: e,
-            })
-        }
-        try {
-            fn(...args)
-        } catch (e) {
-            handleError(e)
-        }
+    // DISABLED: Telemetry completely disabled - do nothing
+    const wrappedRecord = (..._args: Args) => {
+        // Do nothing - telemetry disabled
     }
     const out = {
         ctx,

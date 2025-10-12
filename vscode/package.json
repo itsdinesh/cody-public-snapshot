@@ -3,7 +3,7 @@
   "name": "cody-ai",
   "private": true,
   "displayName": "Cody: AI Code Assistant",
-  "version": "2.1.0-custom",
+  "version": "2.2.0-custom",
   "publisher": "sourcegraph",
   "license": "Apache-2.0",
   "icon": "resources/sourcegraph.png",

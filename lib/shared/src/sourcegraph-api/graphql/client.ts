@@ -59,7 +59,6 @@ import {
     PROMPTS_QUERY,
     PROMPT_TAGS_QUERY,
     PromptsOrderBy,
-    RECORD_TELEMETRY_EVENTS_MUTATION,
     REPOSITORY_IDS_QUERY,
     REPOSITORY_ID_QUERY,
     REPOSITORY_LIST_QUERY,
@@ -80,8 +79,6 @@ interface APIResponse<T> {
     data?: T
     errors?: { message: string; path?: string[] }[]
 }
-
-
 
 type FuzzyFindFilesResponse = {
     __typename?: 'Query'
@@ -683,9 +680,7 @@ export const TRANSIENT_REFETCH_INTERVAL_HINT: RefetchIntervalHint = {
 const QUERY_TO_NAME_REGEXP = /^\s*(?:query|mutation)\s+(\w+)/m
 
 export class SourcegraphGraphQLAPIClient {
-    private isAgentTesting = process.env.CODY_SHIM_TESTING === 'true'
     private readonly resultCacheFactory: ObservableInvalidatedGraphQLResultCacheFactory
-
 
     public static withGlobalConfig(): SourcegraphGraphQLAPIClient {
         return new SourcegraphGraphQLAPIClient(resolvedConfig.pipe(distinctUntilChanged()))
@@ -716,7 +711,6 @@ export class SourcegraphGraphQLAPIClient {
                 backoffFactor: 1.5, // Back off exponentially
             }
         )
-
     }
 
     dispose(): void {
@@ -1469,17 +1463,9 @@ export class SourcegraphGraphQLAPIClient {
      * DO NOT USE THIS DIRECTLY - use an implementation of implementation
      * TelemetryRecorder from '@sourcegraph/telemetry' instead.
      */
-    public async recordTelemetryEvents(events: TelemetryEventInput[]): Promise<unknown | Error> {
-        for (const event of events) {
-            this.anonymizeTelemetryEventInput(event)
-        }
-        const initialResponse = await this.fetchSourcegraphAPI<APIResponse<unknown>>(
-            RECORD_TELEMETRY_EVENTS_MUTATION,
-            {
-                events,
-            }
-        )
-        return extractDataOrError(initialResponse, data => data)
+    public async recordTelemetryEvents(_events: TelemetryEventInput[]): Promise<unknown | Error> {
+        // DISABLED: Telemetry completely disabled - no network requests sent
+        return {}
     }
 
     // Deletes an access token, if it exists on the server
@@ -1491,17 +1477,6 @@ export class SourcegraphGraphQLAPIClient {
             }
         )
         return extractDataOrError(initialResponse, data => data)
-    }
-
-    private anonymizeTelemetryEventInput(event: TelemetryEventInput): void {
-        if (this.isAgentTesting) {
-            event.timestamp = undefined
-            event.parameters.interactionID = undefined
-            event.parameters.billingMetadata = undefined
-            event.parameters.metadata = undefined
-            event.parameters.metadata = undefined
-            event.parameters.privateMetadata = {}
-        }
     }
 
     public async searchAttribution(
