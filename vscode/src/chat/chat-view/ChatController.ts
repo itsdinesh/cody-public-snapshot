@@ -661,6 +661,11 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
                     // Store the user's selected chat model persistently
                     if (message.modelId) {
                         await localStorage.setChatModel(message.modelId)
+                        // Broadcast the model change to all other chat instances immediately
+                        this.clientBroadcast.next({
+                            type: 'model-changed',
+                            modelId: message.modelId,
+                        })
                     }
                     break
                 }
@@ -698,10 +703,6 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
                         type: 'cody.dev.models.updated',
                         success: true,
                     })
-
-                    // The configuration observable chain doesn't reliably propagate changes
-                    // Automatically restart the extension host to ensure models update
-                    await vscode.commands.executeCommand('workbench.action.restartExtensionHost')
                     break
                 }
                 case 'cody.dev.models.setDefaults': {
@@ -2000,38 +2001,54 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
                             map(models => (models === pendingOperation ? null : models))
                         ),
                     chatModels: () =>
-                        promiseFactoryToObservable(async () => {
-                            try {
-                                // Load custom models immediately from VS Code settings
-                                const config = vscode.workspace.getConfiguration('cody')
-                                const devModels = config.get<any[]>('dev.models') || []
+                        new Observable<Model[]>(observer => {
+                            const loadModels = () => {
+                                try {
+                                    // Load custom models from VS Code settings
+                                    const config = vscode.workspace.getConfiguration('cody')
+                                    const devModels = config.get<any[]>('dev.models') || []
 
-                                // Convert dev models to Model objects for chat usage
-                                const customModels: Model[] = devModels
-                                    .filter(model => model.provider && model.model)
-                                    .map(
-                                        devModel =>
-                                            ({
-                                                id: `${devModel.provider}/${devModel.model}`,
-                                                provider: devModel.provider,
-                                                title:
-                                                    devModel.title ||
-                                                    `${devModel.provider}/${devModel.model}`,
-                                                usage: [ModelUsage.Chat, ModelUsage.Edit],
-                                                contextWindow: {
-                                                    input: devModel.inputTokens || 8000,
-                                                    output: devModel.outputTokens || 2000,
-                                                },
-                                                tags: [],
-                                            }) as Model
-                                    )
+                                    // Convert dev models to Model objects for chat usage
+                                    const customModels: Model[] = devModels
+                                        .filter(model => model.provider && model.model)
+                                        .map(
+                                            devModel =>
+                                                ({
+                                                    id: `${devModel.provider}/${devModel.model}`,
+                                                    provider: devModel.provider,
+                                                    title:
+                                                        devModel.title ||
+                                                        `${devModel.provider}/${devModel.model}`,
+                                                    usage: [ModelUsage.Chat, ModelUsage.Edit],
+                                                    contextWindow: {
+                                                        input: devModel.inputTokens || 8000,
+                                                        output: devModel.outputTokens || 2000,
+                                                    },
+                                                    tags: [],
+                                                }) as Model
+                                        )
 
-                                return customModels
-                            } catch (error) {
-                                console.warn('Failed to load custom models:', error)
-                                return []
+                                    observer.next(customModels)
+                                } catch (error) {
+                                    console.warn('Failed to load custom models:', error)
+                                    observer.next([])
+                                }
                             }
-                        }).pipe(startWith([])),
+
+                            // Load models immediately
+                            loadModels()
+
+                            // Listen for configuration changes and reload models
+                            const configListener = vscode.workspace.onDidChangeConfiguration(e => {
+                                if (e.affectsConfiguration('cody.dev.models')) {
+                                    loadModels()
+                                }
+                            })
+
+                            return () => {
+                                configListener.dispose()
+                            }
+                        }),
                     highlights: parameters =>
                         promiseFactoryToObservable(() =>
                             graphqlClient.getHighlightedFileChunk(parameters)
@@ -2052,8 +2069,7 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
                             await modelsService.setSelectedModel(ModelUsage.Chat, model)
                         })
                     },
-                    defaultContext: () => 
-                        Observable.of({ initialContext: [], corpusContext: [] }),
+                    defaultContext: () => Observable.of({ initialContext: [], corpusContext: [] }),
                     resolvedConfig: () => resolvedConfig,
                     authStatus: () => authStatus,
                     transcript: () =>

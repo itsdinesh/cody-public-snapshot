@@ -81,7 +81,7 @@ export const ModelSelectField: React.FunctionComponent<{
         })
     }, [])
 
-    // Listen for remembered model from backend
+    // Listen for remembered model from backend and model changes from other instances
     React.useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             const message = event.data
@@ -92,11 +92,19 @@ export const ModelSelectField: React.FunctionComponent<{
                     ;(ModelSelectField as any)._lastUserSelection = message.modelId
                 }
             }
+            // Listen for model changes from other chat instances
+            if (message.type === 'cody.chat.model.changed' && message.modelId) {
+                const modelExists = models.find(m => m.id === message.modelId)
+                if (modelExists && selectedModelId !== message.modelId) {
+                    setSelectedModelId(message.modelId)
+                    ;(ModelSelectField as any)._lastUserSelection = message.modelId
+                }
+            }
         }
 
         window.addEventListener('message', handleMessage)
         return () => window.removeEventListener('message', handleMessage)
-    }, [models])
+    }, [models, selectedModelId])
 
     // Update local state when the models array changes, but only if stored selection is no longer valid
     React.useEffect(() => {
@@ -130,6 +138,14 @@ export const ModelSelectField: React.FunctionComponent<{
 
     const onModelSelect = useCallback(
         (model: Model): void => {
+            if (showCodyProBadge && isCodyProModel(model)) {
+                getVSCodeAPI().postMessage({
+                    command: 'links',
+                    value: 'https://sourcegraph.com/cody/subscription',
+                })
+                return
+            }
+
             if (selectedModel.id !== model.id) {
                 telemetryRecorder.recordEvent('cody.modelSelector', 'select', {
                     metadata: {
@@ -152,20 +168,15 @@ export const ModelSelectField: React.FunctionComponent<{
                 // Store the user's selection persistently in memory
                 ;(ModelSelectField as any)._lastUserSelection = model.id
 
-                // Persist to backend storage for cross-restart persistence
+                // Persist to backend storage asynchronously (fire and forget)
                 getVSCodeAPI().postMessage({
                     command: 'cody.chat.model.remember',
                     modelId: model.id,
                 })
+
+                // Immediately notify parent to use the new model
+                parentOnModelSelect(model)
             }
-            if (showCodyProBadge && isCodyProModel(model)) {
-                getVSCodeAPI().postMessage({
-                    command: 'links',
-                    value: 'https://sourcegraph.com/cody/subscription',
-                })
-                return
-            }
-            parentOnModelSelect(model)
         },
         [
             selectedModel,
@@ -258,7 +269,7 @@ export const ModelSelectField: React.FunctionComponent<{
             role="combobox"
             data-testid="chat-model-selector"
             iconEnd={readOnly ? undefined : 'chevron'}
-            className={cn('tw-justify-between', className)}
+            className={cn('tw-w-full', className)}
             disabled={readOnly}
             __storybook__open={__storybook__open}
             tooltip={readOnly ? undefined : isMacOS() ? 'Switch model (⌘M)' : 'Switch model (Ctrl+M)'}
@@ -377,7 +388,7 @@ export const ModelSelectField: React.FunctionComponent<{
             )}
             popoverRootProps={{ onOpenChange }}
             popoverContentProps={{
-                className: 'tw-min-w-[325px] tw-w-[unset] tw-max-w-[90%] !tw-p-0',
+                className: 'tw-w-full tw-max-w-full !tw-p-0',
                 onKeyDown: onKeyDown,
                 onCloseAutoFocus: event => {
                     // Prevent the popover trigger from stealing focus after the user selects an
@@ -386,7 +397,11 @@ export const ModelSelectField: React.FunctionComponent<{
                 },
             }}
         >
-            {value !== undefined ? options.find(option => option.value === value)?.title : 'Select...'}
+            <span className="tw-flex-1 tw-min-w-0 tw-overflow-visible">
+                {value !== undefined
+                    ? options.find(option => option.value === value)?.title
+                    : 'Select...'}
+            </span>
         </ToolbarPopoverItem>
     )
 }
@@ -484,9 +499,7 @@ const ModelTitleWithIcon: React.FC<{
                     <ChatModelIcon model={model.provider} className={styles.modelIcon} />
                 )
             ) : null}
-            <span className={clsx('tw-flex-grow tw-truncate tw-min-w-0', styles.modelName)}>
-                {model.title}
-            </span>
+            <span className={clsx('tw-flex-grow tw-min-w-0', styles.modelName)}>{model.title}</span>
             {modelBadge && (
                 <Badge
                     variant="secondary"

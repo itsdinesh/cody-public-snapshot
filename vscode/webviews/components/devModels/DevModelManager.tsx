@@ -86,11 +86,8 @@ export const DevModelManager: React.FC<DevModelManagerProps> = ({ isOpen, onClos
             isDefaultEdit: false,
         })
 
-        // Close the dialog after a short delay to allow the configuration to save
-        // This will cause the parent component to re-render and pick up the new models
-        setTimeout(() => {
-            onClose()
-        }, 500)
+        // Close immediately - models will update live via configuration listener
+        onClose()
     }, [newModel, models, onClose])
 
     const removeModel = useCallback(
@@ -156,11 +153,8 @@ export const DevModelManager: React.FC<DevModelManagerProps> = ({ isOpen, onClos
             isDefaultEdit: false,
         })
 
-        // Close the dialog after a short delay to allow the configuration to save
-        // This will cause the parent component to re-render and pick up the new models
-        setTimeout(() => {
-            onClose()
-        }, 500)
+        // Close immediately - models will update live via configuration listener
+        onClose()
     }, [newModel, models, editingIndex, onClose])
 
     const cancelEdit = useCallback(() => {

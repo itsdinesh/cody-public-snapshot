@@ -265,6 +265,11 @@ interface NoPromptsMigrationNeeded {
     type: 'no_migration_needed'
 }
 
-export interface ClientActionBroadcast {
-    type: 'open-recently-prompts'
-}
+export type ClientActionBroadcast =
+    | {
+          type: 'open-recently-prompts'
+      }
+    | {
+          type: 'model-changed'
+          modelId: string
+      }

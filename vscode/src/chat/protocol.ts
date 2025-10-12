@@ -287,6 +287,10 @@ export type ExtensionMessage =
           type: 'cody.chat.model.remembered'
           modelId: string
       }
+    | {
+          type: 'cody.chat.model.changed'
+          modelId: string
+      }
 
 interface ExtensionAttributionMessage {
     snippet: string

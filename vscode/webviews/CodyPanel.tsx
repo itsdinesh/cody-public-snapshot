@@ -121,6 +121,18 @@ export const CodyPanel: FunctionComponent<CodyPanelProps> = ({
                     document
                         .querySelector<HTMLButtonElement>("button[aria-label='Insert prompt']")
                         ?.click()
+                    break
+                }
+                case 'model-changed': {
+                    // Broadcast model change to all ModelSelectField components via window message
+                    window.postMessage(
+                        {
+                            type: 'cody.chat.model.changed',
+                            modelId: action.modelId,
+                        },
+                        '*'
+                    )
+                    break
                 }
             }
         })
