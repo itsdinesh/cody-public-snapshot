@@ -1,21 +1,15 @@
-import {
-    type ChatMessage,
-    type Model,
-    ModelTag,
-    type ModelsData,
-    isCodyProModel,
-} from '@sourcegraph/cody-shared'
+import { type ChatMessage, type Model, ModelTag, type ModelsData } from '@sourcegraph/cody-shared'
 import { isMacOS } from '@sourcegraph/cody-shared'
 import { DeepCodyAgentID, ToolCodyModelName } from '@sourcegraph/cody-shared/src/models/client'
 import { clsx } from 'clsx'
-import { AlertTriangleIcon, BookOpenIcon, BrainIcon, BuildingIcon, ExternalLinkIcon } from 'lucide-react'
+import { AlertTriangleIcon, BrainIcon } from 'lucide-react'
 import React, { type FunctionComponent, type ReactNode, useCallback, useMemo } from 'react'
 import type { UserAccountInfo } from '../../Chat'
 import { getVSCodeAPI } from '../../utils/VSCodeApi'
 import { useTelemetryRecorder } from '../../utils/telemetry'
 import { chatModelIconComponent } from '../ChatModelIcon'
 import { Badge } from '../shadcn/ui/badge'
-import { Command, CommandGroup, CommandItem, CommandLink, CommandList } from '../shadcn/ui/command'
+import { Command, CommandGroup, CommandItem, CommandList } from '../shadcn/ui/command'
 import { ToolbarPopoverItem } from '../shadcn/ui/toolbar'
 import { cn } from '../shadcn/utils'
 import styles from './ModelSelectField.module.css'
@@ -132,26 +126,11 @@ export const ModelSelectField: React.FunctionComponent<{
     // Fall back to models[0] only if selectedModelId doesn't exist in the list
     const selectedModel = models.find(model => model.id === selectedModelId) || models[0]
 
-    const isCodyProUser = userInfo.isDotComUser && userInfo.isCodyProUser
-    const isEnterpriseUser = !userInfo.isDotComUser
-    const showCodyProBadge = !isEnterpriseUser && !isCodyProUser
-
     const onModelSelect = useCallback(
         (model: Model): void => {
-            if (showCodyProBadge && isCodyProModel(model)) {
-                getVSCodeAPI().postMessage({
-                    command: 'links',
-                    value: 'https://sourcegraph.com/cody/subscription',
-                })
-                return
-            }
-
             if (selectedModel.id !== model.id) {
                 telemetryRecorder.recordEvent('cody.modelSelector', 'select', {
-                    metadata: {
-                        modelIsCodyProOnly: isCodyProModel(model) ? 1 : 0,
-                        isCodyProUser: isCodyProUser ? 1 : 0,
-                    },
+                    metadata: {},
                     privateMetadata: {
                         modelId: model.id,
                         modelProvider: model.provider,
@@ -178,13 +157,7 @@ export const ModelSelectField: React.FunctionComponent<{
                 parentOnModelSelect(model)
             }
         },
-        [
-            selectedModel,
-            telemetryRecorder.recordEvent,
-            showCodyProBadge,
-            parentOnModelSelect,
-            isCodyProUser,
-        ]
+        [selectedModel, telemetryRecorder.recordEvent, parentOnModelSelect]
     )
 
     // Readonly if they are an enterprise user that does not support server-sent models
@@ -196,7 +169,6 @@ export const ModelSelectField: React.FunctionComponent<{
                 // Trigger only when dropdown is about to be opened.
                 telemetryRecorder.recordEvent('cody.modelSelector', 'open', {
                     metadata: {
-                        isCodyProUser: isCodyProUser ? 1 : 0,
                         totalModels: models.length,
                     },
                     billingMetadata: {
@@ -206,36 +178,28 @@ export const ModelSelectField: React.FunctionComponent<{
                 })
             }
         },
-        [telemetryRecorder.recordEvent, isCodyProUser, models.length]
+        [telemetryRecorder.recordEvent, models.length]
     )
 
     const options = useMemo<SelectListOption[]>(
         () =>
-            models
-                .map(m => {
-                    const availability = modelAvailability(userInfo, serverSentModelsEnabled, m, intent)
-                    if (availability === 'needs-cody-pro') {
-                        return undefined
-                    }
-
-                    return {
-                        value: m.id,
-                        title: (
-                            <ModelTitleWithIcon
-                                model={m}
-                                showIcon={true}
-                                showProvider={true}
-                                modelAvailability={availability}
-                            />
-                        ),
-                        // needs-cody-pro models should be clickable (not disabled) so the user can
-                        // be taken to the upgrade page.
-                        disabled: !['available', 'needs-cody-pro'].includes(availability),
-                        group: getModelDropDownUIGroup(m),
-                        tooltip: getTooltip(m, availability),
-                    } satisfies SelectListOption
-                })
-                .filter(Boolean) as SelectListOption[],
+            models.map(m => {
+                const availability = modelAvailability(userInfo, serverSentModelsEnabled, m, intent)
+                return {
+                    value: m.id,
+                    title: (
+                        <ModelTitleWithIcon
+                            model={m}
+                            showIcon={true}
+                            showProvider={true}
+                            modelAvailability={availability}
+                        />
+                    ),
+                    disabled: availability !== 'available',
+                    group: getModelDropDownUIGroup(m),
+                    tooltip: getTooltip(m, availability),
+                } satisfies SelectListOption
+            }),
         [models, userInfo, serverSentModelsEnabled, intent]
     )
     const optionsByGroup: { group: string; options: SelectListOption[] }[] = useMemo(() => {
@@ -262,7 +226,6 @@ export const ModelSelectField: React.FunctionComponent<{
         return null
     }
 
-    const isRateLimited = useMemo(() => models.some(model => model.disabled), [models])
     const value = selectedModel.id
     return (
         <ToolbarPopoverItem
@@ -297,16 +260,6 @@ export const ModelSelectField: React.FunctionComponent<{
                         className="model-selector-popover tw-max-h-[80vh] tw-overflow-y-auto"
                         data-testid="chat-model-popover-option"
                     >
-                        {isRateLimited && (
-                            <div className="tw-pl-5 tw-pr-3 tw-py-1.5 tw-text-sm tw-text-foreground tw-flex tw-justify-center">
-                                <div className="tw-flex tw-items-center tw-gap-2 tw-bg-muted tw-px-2 tw-py-0.5 tw-rounded">
-                                    <AlertTriangleIcon className="tw-w-[16px] tw-h-[16px]" />
-                                    <span className="tw-font-semibold">
-                                        Usage limit reached: Premium models disabled
-                                    </span>
-                                </div>
-                            </div>
-                        )}
                         {optionsByGroup.map(({ group, options }) => (
                             <CommandGroup heading={group} key={group}>
                                 {options.map(option => (
@@ -326,63 +279,6 @@ export const ModelSelectField: React.FunctionComponent<{
                                 ))}
                             </CommandGroup>
                         ))}
-                        <CommandGroup>
-                            <CommandLink
-                                href="https://sourcegraph.com/docs/cody/clients/install-vscode#supported-llm-models"
-                                target="_blank"
-                                rel="noreferrer"
-                                className={styles.modelTitleWithIcon}
-                            >
-                                <span className={styles.modelIcon}>
-                                    {/* wider than normal to fit in with provider icons */}
-                                    <BookOpenIcon size={16} strokeWidth={2} />{' '}
-                                </span>
-                                <span className={styles.modelName}>Documentation</span>
-                                <span className={styles.rightIcon}>
-                                    <ExternalLinkIcon
-                                        size={16}
-                                        strokeWidth={1.25}
-                                        className="tw-opacity-80"
-                                    />
-                                </span>
-                            </CommandLink>
-                        </CommandGroup>
-                        {userInfo.isDotComUser && (
-                            <CommandGroup>
-                                <CommandLink
-                                    key="enterprise-model-options"
-                                    href={ENTERPRISE_MODEL_DOCS_PAGE}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    onSelect={() => {
-                                        telemetryRecorder.recordEvent(
-                                            'cody.modelSelector',
-                                            'clickEnterpriseModelOption',
-                                            {
-                                                billingMetadata: {
-                                                    product: 'cody',
-                                                    category: 'billable',
-                                                },
-                                            }
-                                        )
-                                    }}
-                                    className={styles.modelTitleWithIcon}
-                                >
-                                    <span className={styles.modelIcon}>
-                                        {/* wider than normal to fit in with provider icons */}
-                                        <BuildingIcon size={16} strokeWidth={2} />{' '}
-                                    </span>
-                                    <span className={styles.modelName}>Enterprise Model Options</span>
-                                    <span className={styles.rightIcon}>
-                                        <ExternalLinkIcon
-                                            size={16}
-                                            strokeWidth={1.25}
-                                            className="tw-opacity-80"
-                                        />
-                                    </span>
-                                </CommandLink>
-                            </CommandGroup>
-                        )}
                     </CommandList>
                 </Command>
             )}
@@ -406,10 +302,7 @@ export const ModelSelectField: React.FunctionComponent<{
     )
 }
 
-const ENTERPRISE_MODEL_DOCS_PAGE =
-    'https://sourcegraph.com/docs/cody/clients/enable-cody-enterprise?utm_source=cody.modelSelector'
-
-type ModelAvailability = 'available' | 'needs-cody-pro' | 'not-selectable-on-enterprise'
+type ModelAvailability = 'available' | 'not-selectable'
 
 function modelAvailability(
     userInfo: Pick<UserAccountInfo, 'isCodyProUser' | 'isDotComUser'>,
@@ -418,17 +311,10 @@ function modelAvailability(
     intent?: ChatMessage['intent']
 ): ModelAvailability {
     if (model.disabled) {
-        return 'not-selectable-on-enterprise'
+        return 'not-selectable'
     }
-    if (!userInfo.isDotComUser && !serverSentModelsEnabled) {
-        return 'not-selectable-on-enterprise'
-    }
-    if (isCodyProModel(model) && userInfo.isDotComUser && !userInfo.isCodyProUser) {
-        return 'needs-cody-pro'
-    }
-    // For agentic mode, only allow models with the AgenticCompatible tag (Claude 3.7 Sonnet)
     if (intent === 'agentic' && !model.tags.includes(ModelTag.Default)) {
-        return 'not-selectable-on-enterprise'
+        return 'not-selectable'
     }
     return 'available'
 }
@@ -446,19 +332,14 @@ function getTooltip(model: Model, availability: string): string {
     }
 
     if (model.disabled) {
-        return 'This model is currently unavailable due to rate limiting. Please try a faster model.'
+        return 'This model is currently unavailable.'
     }
 
     const capitalizedProvider =
         model.provider === 'openai'
             ? 'OpenAI'
             : model.provider.charAt(0).toUpperCase() + model.provider.slice(1)
-    switch (availability) {
-        case 'not-selectable-on-enterprise':
-            return 'Chat model set by your Sourcegraph Enterprise admin'
-        default:
-            return `${model.title} by ${capitalizedProvider}`
-    }
+    return `${model.title} by ${capitalizedProvider}`
 }
 
 const getBadgeText = (model: Model): string | null => {
@@ -501,12 +382,7 @@ const ModelTitleWithIcon: React.FC<{
             ) : null}
             <span className={clsx('tw-flex-grow tw-min-w-0', styles.modelName)}>{model.title}</span>
             {modelBadge && (
-                <Badge
-                    variant="secondary"
-                    className={clsx(styles.badge, {
-                        'tw-opacity-75': modelAvailability === 'needs-cody-pro',
-                    })}
-                >
+                <Badge variant="secondary" className={clsx(styles.badge)}>
                     {modelBadge}
                 </Badge>
             )}

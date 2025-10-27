@@ -157,15 +157,7 @@ export class CharactersLogger implements vscode.Disposable {
                 clearTimeout(this.nextTimeoutId)
                 this.nextTimeoutId = null
             }
-            // DISABLED: Telemetry disabled - do nothing
-            // if (!this.isDisposed) {
-            //     telemetryRecorder.recordEvent('cody.characters', 'flush', {
-            //         metadata: { ...this.changeCounters },
-            //     })
-            // }
         } catch (error) {
-            // Telemetry disabled - suppress error logging
-            // outputChannelLogger.logError('CharactersLogger', 'Failed to record telemetry event:', error)
         } finally {
             this.changeCounters = { ...DEFAULT_COUNTERS }
             if (!this.isDisposed) {

@@ -35,20 +35,12 @@ import {
     startWith,
     subscriptionDisposable,
     switchMap,
-    take,
 } from '@sourcegraph/cody-shared'
 
 import { isReinstalling } from '../uninstall/reinstall'
 
 import type { CommandResult } from './CommandResult'
-import { showAccountMenu } from './auth/account-menu'
-import {
-    requestEndpointSettingsDeliveryToSearchPlugin,
-    showSignInMenu,
-    showSignOutMenu,
-    signOut,
-    tokenCallbackHandler,
-} from './auth/auth'
+import { signOut } from './auth/auth'
 import { createAutoEditsProvider } from './autoedits/create-autoedits-provider'
 import { autoeditDebugStore } from './autoedits/debug-panel/debug-store'
 import { autoeditsOutputChannelLogger } from './autoedits/output-channel-logger'
@@ -58,7 +50,7 @@ import { ChatsController, CodyChatEditorViewType } from './chat/chat-view/ChatsC
 import { ContextRetriever } from './chat/chat-view/ContextRetriever'
 import { SourcegraphRemoteFileProvider } from './chat/chat-view/sourcegraphRemoteFile'
 import { MCPManager } from './chat/chat-view/tools/MCPManager'
-import { ACCOUNT_LIMITS_INFO_URL, CODY_FEEDBACK_URL } from './chat/protocol'
+import { CODY_FEEDBACK_URL } from './chat/protocol'
 import { CodeActionProvider } from './code-actions/CodeActionProvider'
 import { commandControllerInit, executeCodyCommand } from './commands/CommandsController'
 import { GhostHintDecorator } from './commands/GhostHintDecorator'
@@ -88,17 +80,14 @@ import type { PlatformContext } from './extension.common'
 import { configureExternalServices } from './external-services'
 import { isRunningInsideAgent } from './jsonrpc/isRunningInsideAgent'
 import { FixupController } from './non-stop/FixupController'
-import { showSetupNotification } from './notifications/setup-notification'
 import { logDebug, logError } from './output-channel-logger'
 import { PromptsManager } from './prompts/manager'
 import { initVSCodeGitApi } from './repository/git-extension-api'
 import { authProvider } from './services/AuthProvider'
-import { charactersLogger } from './services/CharactersLogger'
 import { CodyTerminal } from './services/CodyTerminal'
 import { showFeedbackSupportQuickPick } from './services/FeedbackOptions'
 import { displayHistoryQuickPick } from './services/HistoryChat'
 import { localStorage } from './services/LocalStorageProvider'
-import { NetworkDiagnostics } from './services/NetworkDiagnostics'
 import { VSCodeSecretStorage, secretStorage } from './services/SecretStorageProvider'
 import { registerSidebarCommands } from './services/SidebarCommands'
 import { CodyStatusBar } from './services/StatusBar'
@@ -206,8 +195,6 @@ export async function start(
         disposables.push(logGlobalStateEmissions())
     }
 
-    // DISABLED: Telemetry and analytics are completely disabled
-    // disposables.push(createOrUpdateTelemetryRecorderProvider(isExtensionModeDevOrTest))
     disposables.push(await register(context, platform, isExtensionModeDevOrTest))
     return vscode.Disposable.from(...disposables)
 }
@@ -281,14 +268,6 @@ const register = async (
     const statusBar = CodyStatusBar.init()
     disposables.push(statusBar)
 
-    disposables.push(
-        NetworkDiagnostics.init({
-            statusBar,
-            agent: platform.networkAgent ?? null,
-            authProvider,
-        })
-    )
-
     registerAutocomplete(platform, statusBar, disposables)
     await registerCodyCommands({ statusBar, chatClient, fixupController, disposables, context })
     registerAuthCommands(disposables)
@@ -303,13 +282,6 @@ const register = async (
     }
     registerDebugCommands(context, disposables)
     registerAuthenticationHandlers(disposables)
-    disposables.push(charactersLogger)
-
-    // INC-267 do NOT await on this promise. This promise triggers
-    // `vscode.window.showInformationMessage()`, which only resolves after the
-    // user has clicked on "Setup". Awaiting on this promise will make the Cody
-    // extension timeout during activation.
-    resolvedConfig.pipe(take(1)).subscribe(({ auth }) => showSetupNotification(auth))
 
     // Initialize MCP Manager based on the feature flag
     disposables.push(
@@ -380,19 +352,7 @@ async function registerOtherCommands(disposables: vscode.Disposable[]) {
         // Account links
         vscode.commands.registerCommand(
             'cody.show-rate-limit-modal',
-            async (userMessage: string, retryMessage: string) => {
-                const option = await vscode.window.showInformationMessage(
-                    'Rate Limit Exceeded',
-                    {
-                        modal: true,
-                        detail: `${userMessage}\n\n${retryMessage}`,
-                    },
-                    'Learn More'
-                )
-                if (option) {
-                    void vscode.env.openExternal(vscode.Uri.parse(ACCOUNT_LIMITS_INFO_URL.toString()))
-                }
-            }
+            async (_userMessage: string, _retryMessage: string) => {}
         ),
         // Walkthrough / Support
         vscode.commands.registerCommand('cody.feedback', () =>
@@ -593,14 +553,19 @@ function registerChatCommands(disposables: vscode.Disposable[]): void {
 
 function registerAuthCommands(disposables: vscode.Disposable[]): void {
     disposables.push(
-        vscode.commands.registerCommand('cody.auth.signin', () => showSignInMenu()),
-        vscode.commands.registerCommand('cody.auth.signout', () => showSignOutMenu()),
-        vscode.commands.registerCommand('cody.auth.account', () => showAccountMenu()),
+        vscode.commands.registerCommand('cody.auth.signin', () => {
+            vscode.window.showInformationMessage(
+                'Authentication is bypassed. Configure API keys in settings.'
+            )
+        }),
+        vscode.commands.registerCommand('cody.auth.signout', () => {
+            vscode.window.showInformationMessage('Authentication is bypassed.')
+        }),
+        vscode.commands.registerCommand('cody.auth.account', () => {
+            vscode.window.showInformationMessage('Authentication is bypassed. Using custom API keys.')
+        }),
         vscode.commands.registerCommand('cody.auth.support', () => showFeedbackSupportQuickPick()),
-        vscode.commands.registerCommand(
-            'cody.auth.requestEndpointSettings',
-            async () => await requestEndpointSettingsDeliveryToSearchPlugin()
-        )
+        vscode.commands.registerCommand('cody.auth.requestEndpointSettings', () => {})
     )
 }
 /**
@@ -840,14 +805,9 @@ function registerChat(
 
 function registerAuthenticationHandlers(disposables: vscode.Disposable[]): void {
     disposables.push(
-        // Register URI Handler (e.g. vscode://sourcegraph.cody-ai)
         vscode.window.registerUriHandler({
-            handleUri: async (uri: vscode.Uri) => {
-                if (uri.path === '/app-done') {
-                    // This is an old re-entrypoint from App that is a no-op now.
-                } else {
-                    void tokenCallbackHandler(uri)
-                }
+            handleUri: async (_uri: vscode.Uri) => {
+                vscode.window.showInformationMessage('Authentication is bypassed.')
             },
         })
     )

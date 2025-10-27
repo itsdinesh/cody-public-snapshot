@@ -78,10 +78,7 @@ export function event<
         feature,
         action,
     }
-    // DISABLED: Telemetry completely disabled - do nothing
-    const wrappedRecord = (..._args: Args) => {
-        // Do nothing - telemetry disabled
-    }
+    const wrappedRecord = (..._args: Args) => {}
     const out = {
         ctx,
         record: wrappedRecord,

@@ -1464,7 +1464,6 @@ export class SourcegraphGraphQLAPIClient {
      * TelemetryRecorder from '@sourcegraph/telemetry' instead.
      */
     public async recordTelemetryEvents(_events: TelemetryEventInput[]): Promise<unknown | Error> {
-        // DISABLED: Telemetry completely disabled - no network requests sent
         return {}
     }
 
@@ -1727,7 +1726,7 @@ function catchHTTPError(
             error = `ETIMEDOUT: timed out after ${DEFAULT_TIMEOUT_MSEC}ms`
         }
         const code = `${(typeof error === 'object' && error ? (error as any).code : undefined) ?? ''} `
-        return new Error(`accessing Sourcegraph HTTP API: ${code}${error} (${url})`)
+        return new Error(`API request failed: ${code}${error} (${url})`)
     }
 }
 

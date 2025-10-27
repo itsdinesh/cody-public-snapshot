@@ -338,8 +338,6 @@ export class ChatController implements vscode.Disposable, vscode.WebviewViewProv
                     })
                     break
                 case 'trace-export':
-                    // DISABLED: Telemetry and traces are disabled
-                    // TraceSender.send(message.traceSpanEncodedJson)
                     break
                 case 'smartApplyAccept':
                     await vscode.commands.executeCommand('cody.command.smart-apply.accept', {

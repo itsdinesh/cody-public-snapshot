@@ -61,9 +61,7 @@ export class RestClient {
                 .then(verifyResponseCode)
                 .then(response => response.json() as T)
                 .catch(error =>
-                    isAbortError(error)
-                        ? error
-                        : new Error(`error calling Sourcegraph REST API: ${error} (${url})`)
+                    isAbortError(error) ? error : new Error(`REST API request failed: ${error} (${url})`)
                 )
         )
     }

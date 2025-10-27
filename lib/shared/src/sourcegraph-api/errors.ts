@@ -157,7 +157,7 @@ export class AuthError extends Error {
  */
 export class AvailabilityError extends AuthError {
     constructor() {
-        super('Network Error', 'Sourcegraph is unreachable')
+        super('Network Error', 'API endpoint is unreachable')
         this.showTryAgain = true
     }
 }
@@ -173,9 +173,7 @@ export class EnterpriseUserDotComError extends AuthError {
         super(
             'Enterprise User Authentication Error',
             'Based on your email address we think you may be an employee of ' +
-                `${enterprise}. To get access to all your features please sign ` +
-                "in through your organization's enterprise instance instead. If you need assistance " +
-                'please contact your Sourcegraph admin.'
+                `${enterprise}. To get access to all features, configure your API keys in settings.`
         )
     }
 }

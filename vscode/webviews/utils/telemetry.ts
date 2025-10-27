@@ -2,8 +2,8 @@ import type { TelemetryRecorder } from '@sourcegraph/cody-shared'
 
 import type { SpanContext } from '@opentelemetry/api'
 import { createContext, useContext } from 'react'
-import type { ApiPostMessage } from '../Chat'
-import type { VSCodeWrapper } from './VSCodeApi'
+import { ApiPostMessage } from '../Chat'
+import { VSCodeWrapper } from './VSCodeApi'
 
 /**
  * Create a new {@link TelemetryRecorder} for use in the VS Code webviews for V2 telemetry.
@@ -12,11 +12,8 @@ import type { VSCodeWrapper } from './VSCodeApi'
 export function createWebviewTelemetryRecorder(
     postMessage: ApiPostMessage | Pick<VSCodeWrapper, 'postMessage'>
 ): TelemetryRecorder {
-    // DISABLED: Telemetry and analytics are disabled
     return {
-        recordEvent(feature, action, parameters) {
-            // Do nothing - telemetry disabled
-        },
+        recordEvent(feature, action, parameters) {},
     }
 }
 
